@@ -32,99 +32,31 @@ const memoryDb = {
       password_hash: '$2b$10$3n9g3sN00x0G/7.Xj3O68.d.tJ2cE6pXp80Z9k0w5n1Y0O.O0O0O0', // bcrypt superadmin123
     },
   ],
-  admins: [
-    {
-      id: 1,
-      name: 'Laiba Khan',
-      email: 'laiba@comsats.edu.pk',
-      password_hash: '$2b$10$3n9g3sN00x0G/7.Xj3O68.d.tJ2cE6pXp80Z9k0w5n1Y0O.O0O0O0', // bcrypt laiba123
-      level: 'department',
-      university_id: 1,
-      status: 'active',
-      created_at: new Date().toISOString(),
-    },
-  ],
+  admins: [],
   system_settings: [
     {
       id: 1,
-      university_name: '',
-      campus_name: '',
-      logo_url: '',
+      university_name: 'COMSATS University Islamabad',
+      campus_name: 'Main Campus',
+      logo_url: '/uploads/default-logo.png',
       registration_number_pattern: '^[A-Z]{2,4}-[0-9]{4}-[0-9]{3,5}$',
-      support_email: '',
-      emergency_phone: '',
+      support_email: 'support@campusvote.edu',
+      emergency_phone: '+1 (555) 012-3456',
     },
   ],
   universities: [
     {
       id: 1,
-      university_name: 'COMSATS University',
+      university_name: 'COMSATS University Islamabad',
       logo_url: '/uploads/default-logo.png',
     },
   ],
+  faculties: [],
+  departments: [],
+  programs: [],
   students: [],
-  elections: [
-    {
-      id: 1,
-      title: 'University Executive Union Election 2026',
-      position_title: 'President',
-      university_id: 1,
-      scope: 'university-wide',
-      scope_type: 'all_departments',
-      min_semester: 3,
-      min_cgpa_criteria: 3.0,
-      terms_and_conditions: 'Must be active student with clean academic record.',
-      candidate_apply_start: '2026-08-01T00:00',
-      candidate_apply_end: '2026-09-01T23:59',
-      voter_register_start: '2026-08-01T00:00',
-      voter_register_end: '2026-09-03T23:59',
-      voting_start: '2026-08-01T00:00',
-      voting_end: '2026-09-30T23:59',
-      status: 'active',
-    },
-  ],
-  candidates: [
-    {
-      id: 1,
-      name: 'Sara Khan',
-      father_name: 'Muhammad Aslam Khan',
-      party: 'Student Unity Front',
-      slogan: 'Empowering Student Voices & Smart Campus Facilities',
-      aim_and_mission: 'To modernize university labs, expand digital research access, and establish transparent student representation.',
-      post_election_plan: '1. 24/7 Library & AI Computer Lab Access\n2. Subsidized campus shuttle service\n3. Direct student helpline & monthly townhall meetings',
-      photo_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300',
-      symbol_image_url: 'https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?w=150',
-      symbol_name: 'Eagle Mark (Shaheen)',
-      registration_number: 'SP22-BSE-019',
-      cnic: '35202-7654321-2',
-      email: 'sara@student.edu.pk',
-      cgpa: 3.72,
-      department_name: 'Software Engineering',
-      position_title: 'President',
-      election_id: 1,
-      status: 'pending',
-    },
-    {
-      id: 2,
-      name: 'Ali Raza',
-      father_name: 'Tariq Mehmood Raza',
-      party: 'Techno Alliance',
-      slogan: 'Digital Innovation & Next-Gen Tech Labs',
-      aim_and_mission: 'Focusing on high-speed campus Wi-Fi, industrial internship placements, and hackathon sponsorships.',
-      post_election_plan: '1. Campus-wide high-speed Wi-Fi 6 upgrade\n2. $10,000 Annual Tech Innovation Fund for students\n3. Automated online fee submission & portal fixes',
-      photo_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300',
-      symbol_image_url: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=150',
-      symbol_name: 'Laptop & Torch Mark',
-      registration_number: 'FA21-BCS-042',
-      cnic: '35202-1234567-1',
-      email: 'ali@student.edu.pk',
-      cgpa: 3.85,
-      department_name: 'Computer Science',
-      position_title: 'President',
-      election_id: 1,
-      status: 'approved',
-    },
-  ],
+  elections: [],
+  candidates: [],
   votes: [],
 };
 
@@ -132,9 +64,7 @@ const memoryDb = {
 (async () => {
   try {
     const hashSuper = await bcrypt.hash('superadmin123', 10);
-    const hashAdmin = await bcrypt.hash('laiba123', 10);
     memoryDb.superadmins[0].password_hash = hashSuper;
-    memoryDb.admins[0].password_hash = hashAdmin;
   } catch (e) {}
 })();
 
