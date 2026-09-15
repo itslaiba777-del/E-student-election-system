@@ -506,6 +506,10 @@ export default function AdminDashboardPage() {
       setDepartments((prev) => [newDept, ...prev]);
       setIsDeptModalOpen(false);
     } finally {
+      setSubmitting(false);
+    }
+  };
+
   // Delete Department
   const handleDeleteDepartment = async (deptId, deptName) => {
     if (!confirm(`Are you sure you want to delete department '${deptName}' and all its degree programs?`)) {
