@@ -130,6 +130,30 @@ const getPublicSettings = async (req, res) => {
   }
 };
 
+const deleteDepartment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.query('DELETE FROM programs WHERE department_id = $1', [id]);
+    await db.query('DELETE FROM departments WHERE id = $1', [id]);
+    await db.query('DELETE FROM faculties WHERE id = $1', [id]);
+    return res.status(200).json({ message: 'Department and associated degree programs deleted successfully.' });
+  } catch (error) {
+    console.error('Delete department error:', error);
+    return res.status(500).json({ message: 'Server error deleting department.' });
+  }
+};
+
+const deleteProgram = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.query('DELETE FROM programs WHERE id = $1', [id]);
+    return res.status(200).json({ message: 'Degree Program deleted successfully.' });
+  } catch (error) {
+    console.error('Delete program error:', error);
+    return res.status(500).json({ message: 'Server error deleting program.' });
+  }
+};
+
 module.exports = {
   getFacultiesByUniversity,
   createFaculty,
@@ -140,4 +164,6 @@ module.exports = {
   getAllDepartments,
   getAllPrograms,
   getPublicSettings,
+  deleteDepartment,
+  deleteProgram,
 };

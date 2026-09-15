@@ -80,6 +80,8 @@ export const academicAPI = {
   createFaculty: (data) => api.post('/academic-structure/faculties', data),
   createDepartment: (data) => api.post('/academic-structure/departments', data),
   createProgram: (data) => api.post('/academic-structure/programs', data),
+  deleteDepartment: (id) => api.delete(`/academic-structure/departments/${id}`),
+  deleteProgram: (id) => api.delete(`/academic-structure/programs/${id}`),
 };
 
 export const academicStructureAPI = academicAPI;
