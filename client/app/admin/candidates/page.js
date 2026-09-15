@@ -63,79 +63,7 @@ export default function AdminCandidatesPage() {
 
   const isWindowClosed = new Date() > new Date(electionWindow.apply_end);
 
-  const [candidates, setCandidates] = useState([
-    {
-      id: 1,
-      student_id: '2024-8931',
-      full_name: 'Alex Rivera',
-      position_title: 'Student Body President',
-      party_name: 'Campus Coalition',
-      symbol_name: 'STAR',
-      symbol_image_url: null,
-      photo_url: null,
-      applied_date: 'Oct 12, 2024',
-      status: 'pending',
-      gpa: '3.8',
-      manifesto_summary:
-        'I am running for President because I believe our campus needs a voice that prioritizes transparency and student well-being. My focus will be on improving mental health resources, expanding 24-hour study spaces, and ensuring every student group receives equitable funding.',
-      documents: [
-        { name: 'Official_Academic_Transcript.pdf', size: '2.4 MB', type: 'transcript' },
-        { name: 'Endorsement_Petition_List.csv', size: '156 KB', type: 'petition' },
-      ],
-      checklist: {
-        enrolled: true,
-        no_disciplinary: true,
-        gpa_threshold: true,
-      },
-    },
-    {
-      id: 2,
-      student_id: '2024-1124',
-      full_name: 'Jordan Smith',
-      position_title: 'Secretary',
-      party_name: 'Green Future',
-      symbol_name: 'LEAF',
-      symbol_image_url: null,
-      photo_url: null,
-      applied_date: 'Oct 11, 2024',
-      status: 'approved',
-      gpa: '3.9',
-      manifesto_summary:
-        'Advocating for sustainable campus infrastructure and digital student services integration.',
-      documents: [
-        { name: 'Transcript_Verified.pdf', size: '1.8 MB', type: 'transcript' },
-      ],
-      checklist: {
-        enrolled: true,
-        no_disciplinary: true,
-        gpa_threshold: true,
-      },
-    },
-    {
-      id: 3,
-      student_id: '2024-4421',
-      full_name: 'Sam Lee',
-      position_title: 'Treasurer',
-      party_name: 'Reform United',
-      symbol_name: 'SHIELD',
-      symbol_image_url: null,
-      photo_url: null,
-      applied_date: 'Oct 10, 2024',
-      status: 'rejected',
-      gpa: '2.7',
-      rejection_reason: 'GPA threshold of 3.0 was not met based on registrar audit.',
-      manifesto_summary:
-        'Ensuring fiscal responsibility and transparent allocation of student organization budgets.',
-      documents: [
-        { name: 'Academic_Record.pdf', size: '2.1 MB', type: 'transcript' },
-      ],
-      checklist: {
-        enrolled: true,
-        no_disciplinary: true,
-        gpa_threshold: false,
-      },
-    },
-  ]);
+  const [candidates, setCandidates] = useState([]);
 
   useEffect(() => {
     fetchCandidates();
@@ -144,11 +72,11 @@ export default function AdminCandidatesPage() {
   const fetchCandidates = async () => {
     try {
       const res = await candidateAPI.getAll();
-      if (res.data.candidates && res.data.candidates.length > 0) {
+      if (res.data?.candidates) {
         setCandidates(res.data.candidates);
       }
     } catch (err) {
-      console.warn('Candidate API fetch fallback:', err);
+      setCandidates([]);
     }
   };
 

@@ -41,28 +41,7 @@ export default function SuperAdminManageAdminsPage() {
   const searchParams = useSearchParams();
   const initialAction = searchParams.get('action');
 
-  const [admins, setAdmins] = useState([
-    {
-      id: 1,
-      name: 'Laiba Khan',
-      email: 'laiba@comsats.edu.pk',
-      university_id: 1,
-      university_name: 'COMSATS University Islamabad',
-      level: 'department',
-      department_name: 'Computer Science',
-      status: 'active',
-    },
-    {
-      id: 2,
-      name: 'Harris Vance',
-      email: 'h.vance@comsats.edu.pk',
-      university_id: 1,
-      university_name: 'COMSATS University Islamabad',
-      level: 'faculty',
-      faculty_name: 'Faculty of Engineering',
-      status: 'active',
-    },
-  ]);
+  const [admins, setAdmins] = useState([]);
 
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -114,11 +93,11 @@ export default function SuperAdminManageAdminsPage() {
   const fetchAdmins = async () => {
     try {
       const res = await superadminAPI.getAdmins();
-      if (res.data?.admins && res.data.admins.length > 0) {
+      if (res.data?.admins) {
         setAdmins(res.data.admins);
       }
     } catch (err) {
-      console.warn('Admins list API fetch fallback:', err);
+      setAdmins([]);
     }
   };
 

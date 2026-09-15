@@ -20,17 +20,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/a
 export default function SuperAdminCandidatesPage() {
   const router = useRouter();
 
-  const [candidates, setCandidates] = useState([
-    {
-      id: 1,
-      name: 'Ali Raza',
-      party: 'Techno Alliance',
-      manifesto: 'Digital campus Wi-Fi expansion & smart labs',
-      position_title: 'President',
-      department_name: 'Computer Science',
-      status: 'approved',
-    },
-  ]);
+  const [candidates, setCandidates] = useState([]);
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -44,11 +34,11 @@ export default function SuperAdminCandidatesPage() {
       const res = await axios.get(`${API_BASE_URL}/superadmin/candidates`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.data?.candidates && res.data.candidates.length > 0) {
+      if (res.data?.candidates) {
         setCandidates(res.data.candidates);
       }
     } catch (e) {
-      console.warn('Superadmin fetch candidates fallback:', e);
+      setCandidates([]);
     }
   };
 

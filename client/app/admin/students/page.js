@@ -61,69 +61,7 @@ export default function AdminStudentVerificationPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  const [students, setStudents] = useState([
-    {
-      id: 101,
-      full_name: 'Sarah Jenkins',
-      registration_number: '2024-CS-101',
-      cnic_masked: '12345-XXXXXXX-1',
-      cnic_raw: '12345-6789012-1',
-      department_name: 'Computer Science',
-      batch: 'Fall 2024',
-      email: 's.jenkins@campus.edu',
-      applied_date: 'Oct 24, 2026',
-      status: 'pending',
-      match_score: '98.4%',
-      id_photo_url: null,
-      live_face_url: null,
-    },
-    {
-      id: 102,
-      full_name: 'Marcus Chen',
-      registration_number: '2024-EE-042',
-      cnic_masked: '42345-XXXXXXX-4',
-      cnic_raw: '42345-1234567-4',
-      department_name: 'Electrical Eng.',
-      batch: 'Fall 2024',
-      email: 'm.chen@campus.edu',
-      applied_date: 'Oct 23, 2026',
-      status: 'pending',
-      match_score: '96.2%',
-      id_photo_url: null,
-      live_face_url: null,
-    },
-    {
-      id: 103,
-      full_name: 'Elena Rodriguez',
-      registration_number: '2024-BA-015',
-      cnic_masked: '35678-XXXXXXX-9',
-      cnic_raw: '35678-9876543-9',
-      department_name: 'Business Admin.',
-      batch: 'Fall 2024',
-      email: 'e.rodriguez@campus.edu',
-      applied_date: 'Oct 22, 2026',
-      status: 'approved',
-      match_score: '99.1%',
-      id_photo_url: null,
-      live_face_url: null,
-    },
-    {
-      id: 104,
-      full_name: 'Zain Malik',
-      registration_number: '2024-CS-189',
-      cnic_masked: '61101-XXXXXXX-3',
-      cnic_raw: '61101-1234567-3',
-      department_name: 'Computer Science',
-      batch: 'Fall 2024',
-      email: 'z.malik@campus.edu',
-      applied_date: 'Oct 21, 2026',
-      status: 'rejected',
-      rejection_reason: 'CNIC photo mismatch with registrar database.',
-      match_score: '72.1%',
-      id_photo_url: null,
-      live_face_url: null,
-    },
-  ]);
+  const [students, setStudents] = useState([]);
 
   useEffect(() => {
     fetchStudents();
@@ -132,11 +70,11 @@ export default function AdminStudentVerificationPage() {
   const fetchStudents = async () => {
     try {
       const res = await studentAPI.getAll();
-      if (res.data.students && res.data.students.length > 0) {
+      if (res.data?.students) {
         setStudents(res.data.students);
       }
     } catch (err) {
-      console.warn('Student list API fetch fallback:', err);
+      setStudents([]);
     }
   };
 

@@ -39,33 +39,8 @@ export default function StudentDashboardPage() {
   });
 
   // Active Election & Candidate States
-  const [activeElection, setActiveElection] = useState({
-    id: 1,
-    title: 'University Student Union Election 2026',
-    position_title: 'President',
-    status: 'active',
-    voting_start: '2026-08-01',
-    voting_end: '2026-09-30',
-  });
-
-  const [approvedCandidates, setApprovedCandidates] = useState([
-    {
-      id: 1,
-      name: 'Ali Raza',
-      party: 'Techno Alliance',
-      manifesto: 'Digital campus Wi-Fi expansion & 24/7 smart lab access.',
-      symbol_image_url: 'https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?w=150',
-      photo_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
-    },
-    {
-      id: 2,
-      name: 'Usman Ghani',
-      party: 'Student Unity Front',
-      manifesto: 'Transportation fare subsidies & library resource upgrades.',
-      symbol_image_url: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=150',
-      photo_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
-    },
-  ]);
+  const [activeElection, setActiveElection] = useState(null);
+  const [approvedCandidates, setApprovedCandidates] = useState([]);
 
   const [hasVoted, setHasVoted] = useState(false);
 
@@ -112,22 +87,32 @@ export default function StudentDashboardPage() {
     try {
       // Fetch active elections
       const elecRes = await axios.get(`${API_BASE_URL}/elections`);
-      if (elecRes.data?.elections && elecRes.data.elections.length > 0) {
-        const active = elecRes.data.elections[0];
-        setActiveElection(active);
-        fetchApprovedCandidates(active.id);
-        checkVoterStatus(active.id, token);
+      if (elecRes.data?.elections) {
+        if (elecRes.data.elections.length > 0) {
+          const active = elecRes.data.elections[0];
+          setActiveElection(active);
+          fetchApprovedCandidates(active.id);
+          checkVoterStatus(active.id, token);
+        } else {
+          setActiveElection(null);
+          setApprovedCandidates([]);
+        }
       }
-    } catch (e) {}
+    } catch (e) {
+      setActiveElection(null);
+      setApprovedCandidates([]);
+    }
   };
 
   const fetchApprovedCandidates = async (electionId) => {
     try {
       const res = await axios.get(`${API_BASE_URL}/candidates/election/${electionId}?status=approved`);
-      if (res.data?.candidates && res.data.candidates.length > 0) {
+      if (res.data?.candidates) {
         setApprovedCandidates(res.data.candidates);
       }
-    } catch (e) {}
+    } catch (e) {
+      setApprovedCandidates([]);
+    }
   };
 
   const checkVoterStatus = async (electionId, token) => {

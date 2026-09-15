@@ -20,26 +20,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/a
 export default function SuperAdminStudentsPage() {
   const router = useRouter();
 
-  const [students, setStudents] = useState([
-    {
-      id: 1,
-      full_name: 'Hamza Ahmed',
-      registration_number: 'FA21-BCS-042',
-      cnic: '35202-1234567-1',
-      email: 'hamza@student.edu.pk',
-      department_name: 'Computer Science',
-      status: 'active',
-    },
-    {
-      id: 2,
-      full_name: 'Sara Khan',
-      registration_number: 'SP22-BSE-019',
-      cnic: '35202-7654321-2',
-      email: 'sara@student.edu.pk',
-      department_name: 'Software Engineering',
-      status: 'pending',
-    },
-  ]);
+  const [students, setStudents] = useState([]);
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -53,11 +34,11 @@ export default function SuperAdminStudentsPage() {
       const res = await axios.get(`${API_BASE_URL}/superadmin/students`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.data?.students && res.data.students.length > 0) {
+      if (res.data?.students) {
         setStudents(res.data.students);
       }
     } catch (e) {
-      console.warn('Superadmin fetch students fallback:', e);
+      setStudents([]);
     }
   };
 

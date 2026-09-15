@@ -44,72 +44,10 @@ export default function AdminDashboardPage() {
   });
 
   // Data States
-  const [departments, setDepartments] = useState([
-    { id: 1, department_name: 'Computer Science', department_code: 'CS' },
-    { id: 2, department_name: 'Software Engineering', department_code: 'SE' },
-    { id: 3, department_name: 'Electrical Engineering', department_code: 'EE' },
-  ]);
-
-  const [elections, setElections] = useState([
-    {
-      id: 1,
-      title: 'University Executive Union 2026',
-      position_title: 'President',
-      scope_type: 'all_departments',
-      min_cgpa_criteria: 3.0,
-      terms_and_conditions: 'Must be active enrolled student with clean disciplinary record.',
-      candidate_apply_start: '2026-08-01T00:00',
-      candidate_apply_end: '2026-09-01T23:59',
-      voter_register_end: '2026-09-03T23:59',
-      voting_start: '2026-09-04T08:00',
-      voting_end: '2026-09-05T18:00',
-      calculated_status: 'active',
-    },
-  ]);
-
-  const [candidates, setCandidates] = useState([
-    {
-      id: 1,
-      name: 'Sara Khan',
-      party: 'Student Front',
-      manifesto: 'Better lab equipment & extended library hours',
-      status: 'pending',
-      election_id: 1,
-      position_title: 'President',
-      department_name: 'Software Engineering',
-    },
-    {
-      id: 2,
-      name: 'Ali Raza',
-      party: 'Techno Alliance',
-      manifesto: 'Digital campus Wi-Fi expansion',
-      status: 'approved',
-      election_id: 1,
-      position_title: 'President',
-      department_name: 'Computer Science',
-    },
-  ]);
-
-  const [students, setStudents] = useState([
-    {
-      id: 1,
-      full_name: 'Hamza Ahmed',
-      registration_number: 'FA21-BCS-042',
-      cnic: '35202-1234567-1',
-      email: 'hamza@student.edu.pk',
-      department_name: 'Computer Science',
-      status: 'active',
-    },
-    {
-      id: 2,
-      full_name: 'Sara Khan',
-      registration_number: 'SP22-BSE-019',
-      cnic: '35202-7654321-2',
-      email: 'sara@student.edu.pk',
-      department_name: 'Software Engineering',
-      status: 'pending',
-    },
-  ]);
+  const [departments, setDepartments] = useState([]);
+  const [elections, setElections] = useState([]);
+  const [candidates, setCandidates] = useState([]);
+  const [students, setStudents] = useState([]);
 
   // Modal & Form States
   const [isDeptModalOpen, setIsDeptModalOpen] = useState(false);
@@ -156,15 +94,7 @@ export default function AdminDashboardPage() {
   const [selectedElectionForDept, setSelectedElectionForDept] = useState(null);
 
   // Degree Programs Management State
-  const [programs, setPrograms] = useState([
-    { id: 1, program_name: 'BS Computer Science (BSCS)', program_code: 'BSCS', department_id: 1 },
-    { id: 2, program_name: 'BS Software Engineering (BSSE)', program_code: 'BSSE', department_id: 1 },
-    { id: 3, program_name: 'BS Artificial Intelligence (BSAI)', program_code: 'BSAI', department_id: 1 },
-    { id: 4, program_name: 'BS English Literature', program_code: 'BSENG', department_id: 2 },
-    { id: 5, program_name: 'BS Urdu Studies', program_code: 'BSURD', department_id: 2 },
-    { id: 6, program_name: 'BS Mathematics (BSMATH)', program_code: 'BSMATH', department_id: 3 },
-    { id: 7, program_name: 'BS Economics (BSECON)', program_code: 'BSECON', department_id: 3 },
-  ]);
+  const [programs, setPrograms] = useState([]);
 
   const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
   const [programForm, setProgramForm] = useState({
@@ -503,28 +433,44 @@ export default function AdminDashboardPage() {
       const deptRes = await axios.get(`${API_BASE_URL}/admins/departments`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (deptRes.data?.departments && deptRes.data.departments.length > 0) {
+      if (deptRes.data?.departments) {
         setDepartments(deptRes.data.departments);
       }
-    } catch (e) {}
+    } catch (e) {
+      setDepartments([]);
+    }
 
     try {
       // Fetch Elections
       const elecRes = await axios.get(`${API_BASE_URL}/elections`);
-      if (elecRes.data?.elections && elecRes.data.elections.length > 0) {
+      if (elecRes.data?.elections) {
         setElections(elecRes.data.elections);
       }
-    } catch (e) {}
+    } catch (e) {
+      setElections([]);
+    }
 
     try {
       // Fetch Students
       const studRes = await axios.get(`${API_BASE_URL}/admins/students`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (studRes.data?.students && studRes.data.students.length > 0) {
+      if (studRes.data?.students) {
         setStudents(studRes.data.students);
       }
-    } catch (e) {}
+    } catch (e) {
+      setStudents([]);
+    }
+
+    try {
+      // Fetch Degree Programs
+      const progRes = await axios.get(`${API_BASE_URL}/academic-structure/programs`);
+      if (progRes.data?.programs) {
+        setPrograms(progRes.data.programs);
+      }
+    } catch (e) {
+      setPrograms([]);
+    }
   };
 
   // Create Department
