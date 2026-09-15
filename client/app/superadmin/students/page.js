@@ -1,0 +1,210 @@
+'use client';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import axios from 'axios';
+import {
+  LayoutDashboard,
+  Users,
+  UserCheck,
+  Search,
+  Building2,
+  ShieldCheck,
+  Shield,
+  LogOut,
+  ChevronLeft,
+} from 'lucide-react';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+export default function SuperAdminStudentsPage() {
+  const router = useRouter();
+
+  const [students, setStudents] = useState([
+    {
+      id: 1,
+      full_name: 'Hamza Ahmed',
+      registration_number: 'FA21-BCS-042',
+      cnic: '35202-1234567-1',
+      email: 'hamza@student.edu.pk',
+      department_name: 'Computer Science',
+      status: 'active',
+    },
+    {
+      id: 2,
+      full_name: 'Sara Khan',
+      registration_number: 'SP22-BSE-019',
+      cnic: '35202-7654321-2',
+      email: 'sara@student.edu.pk',
+      department_name: 'Software Engineering',
+      status: 'pending',
+    },
+  ]);
+
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    fetchStudents();
+  }, []);
+
+  const fetchStudents = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_BASE_URL}/superadmin/students`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.data?.students && res.data.students.length > 0) {
+        setStudents(res.data.students);
+      }
+    } catch (e) {
+      console.warn('Superadmin fetch students fallback:', e);
+    }
+  };
+
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      router.push('/');
+    }
+  };
+
+  const filteredStudents = students.filter((s) => {
+    const term = searchQuery.toLowerCase();
+    const name = (s.full_name || '').toLowerCase();
+    const reg = (s.registration_number || '').toLowerCase();
+    const email = (s.email || '').toLowerCase();
+    return name.includes(term) || reg.includes(term) || email.includes(term);
+  });
+
+  return (
+    <div className="bg-[#faf9f5] min-h-screen text-[#1b1c1a] font-sans flex">
+      {/* SideNavBar */}
+      <aside className="w-64 fixed left-0 top-0 hidden lg:flex flex-col bg-[#efeeea] border-r border-[#c0c9bb] p-6 z-50 h-screen justify-between">
+        <div className="space-y-6">
+          <div className="px-2">
+            <span className="font-black text-xl text-[#00450d] tracking-tight">SuperAdmin</span>
+            <p className="text-xs text-[#717a6d] font-bold uppercase tracking-wider mt-0.5">
+              Voter Roster Control
+            </p>
+          </div>
+
+          <nav className="space-y-1">
+            <Link
+              href="/superadmin/dashboard"
+              className="flex items-center space-x-3 px-4 py-3 text-[#41493e] hover:bg-[#e3e2df] hover:text-[#1b1c1a] rounded-xl font-bold text-xs transition-colors"
+            >
+              <LayoutDashboard className="w-4 h-4 text-[#717a6d]" />
+              <span>Dashboard Overview</span>
+            </Link>
+
+            <Link
+              href="/superadmin/settings"
+              className="flex items-center space-x-3 px-4 py-3 text-[#41493e] hover:bg-[#e3e2df] hover:text-[#1b1c1a] rounded-xl font-bold text-xs transition-colors"
+            >
+              <Building2 className="w-4 h-4 text-[#717a6d]" />
+              <span>General Information</span>
+            </Link>
+
+            <Link
+              href="/superadmin/manage-admins"
+              className="flex items-center space-x-3 px-4 py-3 text-[#41493e] hover:bg-[#e3e2df] hover:text-[#1b1c1a] rounded-xl font-bold text-xs transition-colors"
+            >
+              <ShieldCheck className="w-4 h-4 text-[#717a6d]" />
+              <span>Add / Manage Admins</span>
+            </Link>
+
+            <Link
+              href="/superadmin/students"
+              className="flex items-center space-x-3 px-4 py-3 bg-[#a0f399] text-[#217128] rounded-xl font-bold text-xs shadow-xs"
+            >
+              <Users className="w-4 h-4 text-[#00450d]" />
+              <span>All Registered Voters</span>
+            </Link>
+
+            <Link
+              href="/superadmin/candidates"
+              className="flex items-center space-x-3 px-4 py-3 text-[#41493e] hover:bg-[#e3e2df] hover:text-[#1b1c1a] rounded-xl font-bold text-xs transition-colors"
+            >
+              <UserCheck className="w-4 h-4 text-[#717a6d]" />
+              <span>Approved Candidates</span>
+            </Link>
+          </nav>
+        </div>
+
+        <div className="space-y-1 pt-4 border-t border-[#c0c9bb]">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center space-x-3 px-4 py-2.5 text-[#ba1a1a] hover:bg-[#ffdad6]/40 rounded-xl font-bold text-xs transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Log Out</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="lg:ml-64 flex-1 min-h-screen p-6 md:p-8 max-w-7xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#c0c9bb] pb-6">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-[#1b1c1a]">
+              All Registered Student Voters
+            </h1>
+            <p className="text-xs text-[#717a6d] mt-1">
+              Global view of all registered student accounts across university departments.
+            </p>
+          </div>
+
+          <div className="relative w-72">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#717a6d]" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search student voter name, reg no..."
+              className="w-full bg-white border border-[#c0c9bb] rounded-full pl-9 pr-4 py-2 text-xs focus:ring-2 focus:ring-[#00450d] outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Student Roster Table */}
+        <div className="bg-white border border-[#c0c9bb] rounded-2xl overflow-hidden shadow-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-[#f4f4f0] border-b border-[#c0c9bb] text-[11px] font-bold text-[#717a6d] uppercase tracking-wider">
+                <tr>
+                  <th className="px-6 py-3.5">Student Voter Name</th>
+                  <th className="px-6 py-3.5">Registration No & CNIC</th>
+                  <th className="px-6 py-3.5">Department</th>
+                  <th className="px-6 py-3.5">Voter Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#c0c9bb]">
+                {filteredStudents.map((stud) => (
+                  <tr key={stud.id} className="hover:bg-[#f4f4f0] transition-colors">
+                    <td className="px-6 py-4">
+                      <p className="text-xs font-bold text-[#1b1c1a]">{stud.full_name || 'Registered Voter'}</p>
+                      <p className="text-[11px] text-[#717a6d]">{stud.email}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-xs font-mono font-bold text-[#00450d]">{stud.registration_number}</p>
+                      <p className="text-[11px] text-[#717a6d]">{stud.cnic}</p>
+                    </td>
+                    <td className="px-6 py-4 text-xs font-semibold text-[#41493e]">
+                      {stud.department_name || 'Computer Science'}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-3 py-1 bg-[#a0f399] text-[#005312] rounded-full text-[10px] font-extrabold uppercase">
+                        REGISTERED VOTER
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
