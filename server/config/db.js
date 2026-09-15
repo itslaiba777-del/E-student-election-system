@@ -89,6 +89,7 @@ const safeQuery = async (text, params = []) => {
 
     // 1. SELECT COUNT
     if (queryStr.startsWith('select count(*)')) {
+      if (queryStr.includes('from superadmins')) return { rows: [{ count: memoryDb.superadmins.length }] };
       if (queryStr.includes('from universities')) return { rows: [{ count: memoryDb.universities.length }] };
       if (queryStr.includes('from admins')) return { rows: [{ count: memoryDb.admins.length }] };
       if (queryStr.includes('from students')) return { rows: [{ count: memoryDb.students.length }] };
