@@ -125,23 +125,25 @@ export default function Step2AcademicDetailsPage() {
     } catch (e) {}
   };
 
-  // Fetch Faculties
+  const formatDepartmentName = (name) => {
+    if (!name) return '';
+    let cleaned = name.replace(/^Faculty of /i, '').replace(/^School of /i, '').trim();
+    cleaned = cleaned.replace(/(\s*Department)+$/i, '').trim();
+    return `${cleaned} Department`;
+  };
+
+  // Fetch Faculties / Departments from DB
   const fetchFaculties = async () => {
-    const uniId = selectedUniversity ? selectedUniversity.id : 1;
     try {
-      const res = await academicAPI.getFaculties(uniId);
-      const fetched = res.data.faculties || [];
-      if (fetched.length > 0) {
-        setFaculties(fetched);
-      } else {
-        setFaculties(sampleAcademicData.faculties);
-      }
+      const res = await academicAPI.getAllDepartments();
+      const fetched = res.data.departments || [];
+      setFaculties(fetched);
     } catch (err) {
-      setFaculties(sampleAcademicData.faculties);
+      setFaculties([]);
     }
   };
 
-  // Handle Faculty Change -> Cascades to Departments
+  // Handle Department Change -> Cascades to Degree Programs
   const handleFacultyChange = async (facId) => {
     setSelectedFaculty(facId);
     setSelectedDepartment('');
@@ -149,36 +151,21 @@ export default function Step2AcademicDetailsPage() {
     setDepartments([]);
     setPrograms([]);
 
+    if (!facId) return;
+
     try {
-      const res = await academicAPI.getDepartments(facId);
-      const fetched = res.data.departments || [];
-      if (fetched.length > 0) {
-        setDepartments(fetched);
-      } else {
-        setDepartments(sampleAcademicData.departments[facId] || []);
-      }
+      const res = await academicAPI.getPrograms(facId);
+      const fetched = res.data.programs || [];
+      setDepartments(fetched);
     } catch (err) {
-      setDepartments(sampleAcademicData.departments[facId] || []);
+      setDepartments([]);
     }
   };
 
-  // Handle Department Change -> Cascades to Programs
+  // Handle Program Change
   const handleDepartmentChange = async (deptId) => {
     setSelectedDepartment(deptId);
-    setSelectedProgram('');
-    setPrograms([]);
-
-    try {
-      const res = await academicAPI.getPrograms(deptId);
-      const fetched = res.data.programs || [];
-      if (fetched.length > 0) {
-        setPrograms(fetched);
-      } else {
-        setPrograms(sampleAcademicData.programs[deptId] || []);
-      }
-    } catch (err) {
-      setPrograms(sampleAcademicData.programs[deptId] || []);
-    }
+    setSelectedProgram(deptId);
   };
 
   const handleContinue = (e) => {
@@ -334,7 +321,7 @@ export default function Step2AcademicDetailsPage() {
                       <option value="">-- Select Department --</option>
                       {faculties.map((fac) => (
                         <option key={fac.id} value={fac.id}>
-                          {fac.faculty_name.replace('Faculty of ', '').replace('School of ', '')} Department
+                          {formatDepartmentName(fac.department_name || fac.faculty_name)}
                         </option>
                       ))}
                     </select>
@@ -361,7 +348,7 @@ export default function Step2AcademicDetailsPage() {
                       </option>
                       {departments.map((dept) => (
                         <option key={dept.id} value={dept.id}>
-                          {dept.department_name}
+                          {dept.program_name || dept.department_name}
                         </option>
                       ))}
                     </select>

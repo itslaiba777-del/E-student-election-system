@@ -51,9 +51,29 @@ const memoryDb = {
       logo_url: '/uploads/default-logo.png',
     },
   ],
-  faculties: [],
-  departments: [],
-  programs: [],
+  faculties: [
+    { id: 1, faculty_name: 'Computer Science Department', university_id: 1 },
+    { id: 2, faculty_name: 'Humanities & Languages Department', university_id: 1 },
+    { id: 3, faculty_name: 'Mathematics Department', university_id: 1 },
+    { id: 4, faculty_name: 'Management Sciences Department', university_id: 1 },
+  ],
+  departments: [
+    { id: 1, department_name: 'Computer Science Department', department_code: 'CS', faculty_id: 1, university_id: 1 },
+    { id: 2, department_name: 'Humanities & Languages Department', department_code: 'HUM', faculty_id: 2, university_id: 1 },
+    { id: 3, department_name: 'Mathematics Department', department_code: 'MATH', faculty_id: 3, university_id: 1 },
+    { id: 4, department_name: 'Management Sciences Department', department_code: 'MGMT', faculty_id: 4, university_id: 1 },
+  ],
+  programs: [
+    { id: 101, program_name: 'BS Computer Science (BSCS)', department_id: 1 },
+    { id: 102, program_name: 'BS Software Engineering (BSSE)', department_id: 1 },
+    { id: 103, program_name: 'BS Artificial Intelligence (BSAI)', department_id: 1 },
+    { id: 201, program_name: 'BS English Literature', department_id: 2 },
+    { id: 202, program_name: 'BS Urdu Studies', department_id: 2 },
+    { id: 301, program_name: 'BS Mathematics (BSMATH)', department_id: 3 },
+    { id: 302, program_name: 'BS Economics (BSECON)', department_id: 3 },
+    { id: 401, program_name: 'Bachelor of Business Administration (BBA)', department_id: 4 },
+    { id: 402, program_name: 'Master of Business Administration (MBA)', department_id: 4 },
+  ],
   students: [],
   elections: [],
   candidates: [],
@@ -128,22 +148,81 @@ const safeQuery = async (text, params = []) => {
       return { rows: memoryDb.system_settings };
     }
 
-    // 5. SELECT FROM departments
+    // SELECT FROM faculties
+    if (queryStr.includes('from faculties')) {
+      return { rows: memoryDb.faculties || [] };
+    }
+
+    // SELECT FROM departments
     if (queryStr.includes('from departments')) {
+      if (queryStr.includes('where faculty_id')) {
+        const facId = params[0];
+        return { rows: (memoryDb.departments || []).filter((d) => d.faculty_id == facId) };
+      }
       return { rows: memoryDb.departments || [] };
     }
 
-    // 6. INSERT INTO departments
+    // SELECT FROM programs
+    if (queryStr.includes('from programs')) {
+      if (queryStr.includes('where department_id')) {
+        const deptId = params[0];
+        return { rows: (memoryDb.programs || []).filter((p) => p.department_id == deptId) };
+      }
+      return { rows: memoryDb.programs || [] };
+    }
+
+    // INSERT INTO faculties
+    if (queryStr.startsWith('insert into faculties')) {
+      const name = params[0] || 'New Faculty';
+      const uniId = params[1] || 1;
+      const newFac = { id: (memoryDb.faculties || []).length + 1, faculty_name: name, university_id: uniId };
+      if (!memoryDb.faculties) memoryDb.faculties = [];
+      memoryDb.faculties.push(newFac);
+      if (!memoryDb.departments) memoryDb.departments = [];
+      memoryDb.departments.push({
+        id: newFac.id,
+        department_name: name,
+        department_code: name.substring(0, 4).toUpperCase(),
+        faculty_id: newFac.id,
+        university_id: uniId,
+      });
+      return { rows: [newFac] };
+    }
+
+    // INSERT INTO departments
     if (queryStr.startsWith('insert into departments')) {
+      const name = params[0] || 'New Department';
+      const code = typeof params[1] === 'string' ? params[1] : name.substring(0, 4).toUpperCase();
+      const facId = typeof params[1] === 'number' ? params[1] : (memoryDb.departments || []).length + 1;
       const newDept = {
         id: (memoryDb.departments || []).length + 1,
-        department_name: params[0] || 'New Department',
-        department_code: params[1] || 'DEPT',
+        department_name: name,
+        department_code: code,
+        faculty_id: facId,
+        university_id: 1,
         created_at: new Date().toISOString(),
       };
       if (!memoryDb.departments) memoryDb.departments = [];
-      memoryDb.departments.unshift(newDept);
+      memoryDb.departments.push(newDept);
+      if (!memoryDb.faculties) memoryDb.faculties = [];
+      if (!memoryDb.faculties.some((f) => f.id == newDept.id)) {
+        memoryDb.faculties.push({ id: newDept.id, faculty_name: name, university_id: 1 });
+      }
       return { rows: [newDept] };
+    }
+
+    // INSERT INTO programs
+    if (queryStr.startsWith('insert into programs')) {
+      const pName = params[0] || 'New Program';
+      const dId = parseInt(params[1], 10) || 1;
+      const newProg = {
+        id: (memoryDb.programs || []).length + 100,
+        program_name: pName,
+        department_id: dId,
+      };
+      if (!memoryDb.programs) memoryDb.programs = [];
+      memoryDb.programs.push(newProg);
+      return { rows: [newProg] };
     }
 
     // 7. SELECT FROM students

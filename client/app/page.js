@@ -149,31 +149,11 @@ export default function UnifiedAuthHub() {
     } catch (e) {}
   };
 
-  const defaultDepartments = [
-    { id: 1, faculty_name: 'Computer Science Department' },
-    { id: 2, faculty_name: 'Humanities & Languages Department' },
-    { id: 3, faculty_name: 'Mathematics Department' },
-    { id: 4, faculty_name: 'Management Sciences Department' },
-  ];
-
-  const defaultPrograms = {
-    1: [
-      { id: 101, department_name: 'BS Computer Science (BSCS)' },
-      { id: 102, department_name: 'BS Software Engineering (BSSE)' },
-      { id: 103, department_name: 'BS Artificial Intelligence (BSAI)' },
-    ],
-    2: [
-      { id: 201, department_name: 'BS English Literature' },
-      { id: 202, department_name: 'BS Urdu Studies' },
-    ],
-    3: [
-      { id: 301, department_name: 'BS Mathematics (BSMATH)' },
-      { id: 302, department_name: 'BS Economics (BSECON)' },
-    ],
-    4: [
-      { id: 401, department_name: 'Bachelor of Business Administration (BBA)' },
-      { id: 402, department_name: 'Master of Business Administration (MBA)' },
-    ],
+  const formatDepartmentName = (name) => {
+    if (!name) return '';
+    let cleaned = name.replace(/^Faculty of /i, '').replace(/^School of /i, '').trim();
+    cleaned = cleaned.replace(/(\s*Department)+$/i, '').trim();
+    return `${cleaned} Department`;
   };
 
   const fetchUniversities = async () => {
@@ -185,19 +165,17 @@ export default function UnifiedAuthHub() {
       setRegForm((prev) => ({ ...prev, university_id: uniId }));
       fetchFaculties(uniId);
     } catch (err) {
-      console.warn('Failed to load universities:', err);
       fetchFaculties(1);
     }
   };
 
   const fetchFaculties = async (uniId) => {
     try {
-      const res = await academicAPI.getFaculties(uniId || 1);
-      let facs = res.data.faculties || [];
-      if (!facs || facs.length === 0) facs = defaultDepartments;
-      setFaculties(facs);
+      const res = await academicAPI.getAllDepartments();
+      let depts = res.data.departments || [];
+      setFaculties(depts);
     } catch (err) {
-      setFaculties(defaultDepartments);
+      setFaculties([]);
     }
   };
 
@@ -207,13 +185,11 @@ export default function UnifiedAuthHub() {
       return;
     }
     try {
-      const res = await academicAPI.getDepartments(facId);
-      let depts = res.data.departments || [];
-      if (!depts || depts.length === 0) depts = defaultPrograms[facId] || defaultPrograms[1];
-      setDepartments(depts);
+      const res = await academicAPI.getPrograms(facId);
+      let progs = res.data.programs || [];
+      setDepartments(progs);
     } catch (err) {
-      const depts = defaultPrograms[facId] || defaultPrograms[1];
-      setDepartments(depts);
+      setDepartments([]);
     }
   };
 
@@ -676,7 +652,7 @@ export default function UnifiedAuthHub() {
                     <option value="">-- Select Department --</option>
                     {faculties.map((f) => (
                       <option key={f.id} value={f.id}>
-                        {f.faculty_name.replace('Faculty of ', '').replace('School of ', '')} Department
+                        {formatDepartmentName(f.department_name || f.faculty_name)}
                       </option>
                     ))}
                   </select>
@@ -695,7 +671,7 @@ export default function UnifiedAuthHub() {
                   >
                     <option value="">-- Select Degree / Program --</option>
                     {departments.map((d) => (
-                      <option key={d.id} value={d.id}>{d.department_name}</option>
+                      <option key={d.id} value={d.id}>{d.program_name || d.department_name}</option>
                     ))}
                   </select>
                 </div>
@@ -890,7 +866,7 @@ export default function UnifiedAuthHub() {
                       <option value="">-- Select Department --</option>
                       {faculties.map((f) => (
                         <option key={f.id} value={f.id}>
-                          {f.faculty_name.replace('Faculty of ', '').replace('School of ', '')} Department
+                          {formatDepartmentName(f.department_name || f.faculty_name)}
                         </option>
                       ))}
                     </select>
@@ -909,7 +885,7 @@ export default function UnifiedAuthHub() {
                     >
                       <option value="">-- Select Degree / Program --</option>
                       {departments.map((d) => (
-                        <option key={d.id} value={d.id}>{d.department_name}</option>
+                        <option key={d.id} value={d.id}>{d.program_name || d.department_name}</option>
                       ))}
                     </select>
                   </div>
