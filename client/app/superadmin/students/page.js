@@ -17,7 +17,7 @@ import {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-export default functin SuperAdminStudentsPage() {
+export default function SuperAdminStudentsPage() {
   const router = useRouter();
 
   const [students, setStudents] = useState([]);
