@@ -15,13 +15,15 @@ const getFacultiesByUniversity = async (req, res) => {
 
 const createFaculty = async (req, res) => {
   try {
-    const { faculty_name, university_id } = req.body;
-    if (!faculty_name || !university_id) {
-      return res.status(400).json({ message: 'Faculty name and university ID are required.' });
+    const { faculty_name, name, university_id } = req.body;
+    const fName = (faculty_name || name || '').trim();
+    if (!fName) {
+      return res.status(400).json({ message: 'Faculty name is required.' });
     }
+    const uniId = university_id || 1;
     const result = await db.query(
       'INSERT INTO faculties (faculty_name, university_id) VALUES ($1, $2) RETURNING *',
-      [faculty_name.trim(), university_id]
+      [fName, uniId]
     );
     return res.status(201).json({ message: 'Faculty created.', faculty: result.rows[0] });
   } catch (error) {
@@ -45,13 +47,15 @@ const getDepartmentsByFaculty = async (req, res) => {
 
 const createDepartment = async (req, res) => {
   try {
-    const { department_name, faculty_id } = req.body;
-    if (!department_name || !faculty_id) {
-      return res.status(400).json({ message: 'Department name and faculty ID are required.' });
+    const { department_name, name, faculty_id } = req.body;
+    const dName = (department_name || name || '').trim();
+    if (!dName) {
+      return res.status(400).json({ message: 'Department name is required.' });
     }
+    const facId = faculty_id || 1;
     const result = await db.query(
       'INSERT INTO departments (department_name, faculty_id) VALUES ($1, $2) RETURNING *',
-      [department_name.trim(), faculty_id]
+      [dName, facId]
     );
     return res.status(201).json({ message: 'Department created.', department: result.rows[0] });
   } catch (error) {
@@ -75,13 +79,14 @@ const getProgramsByDepartment = async (req, res) => {
 
 const createProgram = async (req, res) => {
   try {
-    const { program_name, department_id } = req.body;
-    if (!program_name || !department_id) {
+    const { program_name, name, department_id } = req.body;
+    const pName = (program_name || name || '').trim();
+    if (!pName || !department_id) {
       return res.status(400).json({ message: 'Program name and department ID are required.' });
     }
     const result = await db.query(
       'INSERT INTO programs (program_name, department_id) VALUES ($1, $2) RETURNING *',
-      [program_name.trim(), department_id]
+      [pName, department_id]
     );
     return res.status(201).json({ message: 'Program created.', program: result.rows[0] });
   } catch (error) {
@@ -154,6 +159,71 @@ const deleteProgram = async (req, res) => {
   }
 };
 
+const getHierarchy = async (req, res) => {
+  try {
+    const facultiesRes = await db.query('SELECT * FROM faculties ORDER BY id ASC');
+    const deptsRes = await db.query('SELECT * FROM departments ORDER BY id ASC');
+    const progsRes = await db.query('SELECT * FROM programs ORDER BY id ASC');
+
+    const faculties = facultiesRes.rows || [];
+    const departments = deptsRes.rows || [];
+    const programs = progsRes.rows || [];
+
+    let hierarchy = faculties.map((f) => ({
+      id: f.id,
+      university_id: f.university_id || 1,
+      name: f.faculty_name,
+      expanded: true,
+      departments: departments
+        .filter((d) => d.faculty_id == f.id || (!d.faculty_id && f.id == 1))
+        .map((d) => ({
+          id: d.id,
+          faculty_id: f.id,
+          name: d.department_name,
+          expanded: true,
+          programs: programs
+            .filter((p) => p.department_id == d.id)
+            .map((p) => ({
+              id: p.id,
+              department_id: d.id,
+              name: p.program_name,
+            })),
+        })),
+    }));
+
+    const assignedDeptIds = new Set();
+    hierarchy.forEach((f) => f.departments.forEach((d) => assignedDeptIds.add(d.id)));
+    const unassignedDepts = departments.filter((d) => !assignedDeptIds.has(d.id));
+
+    if (unassignedDepts.length > 0) {
+      hierarchy.push({
+        id: 999,
+        university_id: 1,
+        name: 'Academic Departments',
+        expanded: true,
+        departments: unassignedDepts.map((d) => ({
+          id: d.id,
+          faculty_id: 999,
+          name: d.department_name,
+          expanded: true,
+          programs: programs
+            .filter((p) => p.department_id == d.id)
+            .map((p) => ({
+              id: p.id,
+              department_id: d.id,
+              name: p.program_name,
+            })),
+        })),
+      });
+    }
+
+    return res.status(200).json({ faculties: hierarchy });
+  } catch (err) {
+    console.error('Get hierarchy error:', err);
+    return res.status(500).json({ message: 'Server error fetching academic hierarchy.' });
+  }
+};
+
 module.exports = {
   getFacultiesByUniversity,
   createFaculty,
@@ -166,4 +236,5 @@ module.exports = {
   getPublicSettings,
   deleteDepartment,
   deleteProgram,
+  getHierarchy,
 };

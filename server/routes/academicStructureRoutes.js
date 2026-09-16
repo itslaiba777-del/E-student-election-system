@@ -12,6 +12,7 @@ const {
   getPublicSettings,
   deleteDepartment,
   deleteProgram,
+  getHierarchy,
 } = require('../controllers/academicStructureController');
 const { verifyToken, requireRole } = require('../middleware/authMiddleware');
 
@@ -19,6 +20,7 @@ const { verifyToken, requireRole } = require('../middleware/authMiddleware');
 router.get('/public-settings', getPublicSettings);
 router.get('/departments', getAllDepartments);
 router.get('/programs', getAllPrograms);
+router.get('/hierarchy/:university_id', getHierarchy);
 router.get('/university/:university_id/faculties', getFacultiesByUniversity);
 router.get('/faculty/:faculty_id/departments', getDepartmentsByFaculty);
 router.get('/department/:department_id/programs', getProgramsByDepartment);

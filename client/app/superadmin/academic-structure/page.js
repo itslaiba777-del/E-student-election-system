@@ -45,52 +45,7 @@ export default function SuperAdminAcademicStructurePage() {
   const [selectedUniId, setSelectedUniId] = useState(urlUniId ? Number(urlUniId) : 1);
 
   // Hierarchy Data State (Faculties -> Departments -> Programs)
-  const [faculties, setFaculties] = useState([
-    {
-      id: 101,
-      university_id: 1,
-      name: 'Faculty of Engineering & Technology',
-      expanded: true,
-      departments: [
-        {
-          id: 201,
-          faculty_id: 101,
-          name: 'Department of Computer Science',
-          expanded: true,
-          programs: [
-            { id: 301, department_id: 201, name: 'BS Computer Science (Core)' },
-            { id: 302, department_id: 201, name: 'MS Information Technology' },
-          ],
-        },
-        {
-          id: 202,
-          faculty_id: 101,
-          name: 'Department of Electrical Engineering',
-          expanded: false,
-          programs: [
-            { id: 303, department_id: 202, name: 'BS Electrical Engineering' },
-          ],
-        },
-      ],
-    },
-    {
-      id: 102,
-      university_id: 1,
-      name: 'Faculty of Business & Management',
-      expanded: false,
-      departments: [
-        {
-          id: 203,
-          faculty_id: 102,
-          name: 'Department of Business Administration',
-          expanded: false,
-          programs: [
-            { id: 304, department_id: 203, name: 'Bachelor of Business Administration (BBA)' },
-          ],
-        },
-      ],
-    },
-  ]);
+  const [faculties, setFaculties] = useState([]);
 
   // Modal State for Add / Edit
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -129,11 +84,9 @@ export default function SuperAdminAcademicStructurePage() {
   const fetchHierarchy = async (uniId) => {
     try {
       const res = await academicStructureAPI.getHierarchy(uniId);
-      if (res.data.faculties && res.data.faculties.length > 0) {
-        setFaculties(res.data.faculties);
-      }
+      setFaculties(res.data.faculties || []);
     } catch (err) {
-      console.warn('Hierarchy fetch fallback:', err);
+      setFaculties([]);
     }
   };
 

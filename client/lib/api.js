@@ -77,6 +77,7 @@ export const academicAPI = {
   getFaculties: (uniId) => api.get(`/academic-structure/university/${uniId}/faculties`),
   getDepartments: (facId) => api.get(`/academic-structure/faculty/${facId}/departments`),
   getPrograms: (deptId) => api.get(`/academic-structure/department/${deptId}/programs`),
+  getHierarchy: (uniId) => api.get(`/academic-structure/hierarchy/${uniId}`),
   createFaculty: (data) => api.post('/academic-structure/faculties', data),
   createDepartment: (data) => api.post('/academic-structure/departments', data),
   createProgram: (data) => api.post('/academic-structure/programs', data),
