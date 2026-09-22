@@ -167,6 +167,58 @@ const safeQuery = async (text, params = []) => {
       return { rows: [] };
     }
 
+    // INSERT INTO faculties
+    if (queryStr.startsWith('insert into faculties')) {
+      const name = params[0] || 'New Faculty';
+      const uniId = params[1] || 1;
+      const newFac = {
+        id: (memoryDb.faculties || []).length + 1,
+        faculty_name: name,
+        university_id: uniId,
+        created_at: new Date().toISOString(),
+      };
+      if (!memoryDb.faculties) memoryDb.faculties = [];
+      memoryDb.faculties.push(newFac);
+      return { rows: [newFac] };
+    }
+
+    // INSERT INTO departments
+    if (queryStr.startsWith('insert into departments')) {
+      const name = params[0] || 'New Department';
+      const code = typeof params[1] === 'string' ? params[1] : (typeof params[2] === 'string' ? params[2] : name.substring(0, 4).toUpperCase());
+      const facId = typeof params[1] === 'number' ? params[1] : (typeof params[2] === 'number' ? params[2] : (typeof params[3] === 'number' ? params[3] : 1));
+      const newDept = {
+        id: (memoryDb.departments || []).length + 1,
+        department_name: name,
+        department_code: code,
+        faculty_id: facId,
+        university_id: 1,
+        created_at: new Date().toISOString(),
+      };
+      if (!memoryDb.departments) memoryDb.departments = [];
+      memoryDb.departments.push(newDept);
+      if (!memoryDb.faculties) memoryDb.faculties = [];
+      if (!memoryDb.faculties.some((f) => f.id == newDept.id)) {
+        memoryDb.faculties.push({ id: newDept.id, faculty_name: name, university_id: 1 });
+      }
+      return { rows: [newDept] };
+    }
+
+    // INSERT INTO programs
+    if (queryStr.startsWith('insert into programs')) {
+      const pName = params[0] || 'New Program';
+      const dId = parseInt(params[1], 10) || 1;
+      const newProg = {
+        id: (memoryDb.programs || []).length + 100,
+        program_name: pName,
+        department_id: dId,
+        created_at: new Date().toISOString(),
+      };
+      if (!memoryDb.programs) memoryDb.programs = [];
+      memoryDb.programs.push(newProg);
+      return { rows: [newProg] };
+    }
+
     // SELECT FROM faculties
     if (queryStr.includes('from faculties')) {
       return { rows: memoryDb.faculties || [] };
