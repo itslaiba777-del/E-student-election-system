@@ -21,7 +21,10 @@ import {
   AlertCircle,
   X,
   Camera,
-  ArrowRight
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Info
 } from 'lucide-react';
 import { authAPI, studentAPI, universityAPI, academicAPI } from '../lib/api';
 import FaceCapture from '../components/FaceCapture';
@@ -78,10 +81,22 @@ export default function UnifiedAuthHub() {
   const [showLowCgpaModal, setShowLowCgpaModal] = useState(false);
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [showFaceModal, setShowFaceModal] = useState(false);
+  const [showProfileSummaryModal, setShowProfileSummaryModal] = useState(false);
+  const [showPasswordInSummary, setShowPasswordInSummary] = useState(false);
 
   const [otpCode, setOtpCode] = useState('');
   const [otpSentMessage, setOtpSentMessage] = useState('');
   const [faceData, setFaceData] = useState(null);
+
+  const getSelectedDepartmentName = () => {
+    const f = faculties.find((item) => String(item.id) === String(regForm.faculty_id));
+    return f ? formatDepartmentName(f.department_name || f.faculty_name) : 'Computer Science Department';
+  };
+
+  const getSelectedProgramName = () => {
+    const p = departments.find((item) => String(item.id) === String(regForm.department_id));
+    return p ? (p.program_name || p.department_name) : 'BS Computer Science';
+  };
 
   // Active Election & Registration Windows State
   const [activeElection, setActiveElection] = useState({
@@ -353,9 +368,25 @@ export default function UnifiedAuthHub() {
     }
   };
 
-  // Final Registration after Face Scan
-  const handleFaceCaptured = async (faceInfo) => {
+  // Store captured face photo & descriptor
+  const handleFaceCaptured = (faceInfo) => {
     setFaceData(faceInfo);
+    setError('');
+  };
+
+  // Proceed to Profile Summary & Credentials Screen
+  const handleProceedToSummary = () => {
+    if (!faceData?.image) {
+      setError('Please click the button to open your camera and capture your picture first.');
+      return;
+    }
+    setError('');
+    setShowFaceModal(false);
+    setShowProfileSummaryModal(true);
+  };
+
+  // Final Registration API submit from Profile Summary Screen
+  const handleFinalRegistrationSubmit = async () => {
     setLoading(true);
     setError('');
 
@@ -363,18 +394,23 @@ export default function UnifiedAuthHub() {
       const payload = {
         ...regForm,
         user_role: targetRole,
-        face_encoding: faceInfo?.descriptor || null,
+        face_encoding: faceData?.descriptor || null,
+        photo_url: faceData?.image || null,
       };
 
       const res = await studentAPI.register(payload);
-      setShowFaceModal(false);
-      setSuccess(`${targetRole === 'candidate' ? 'Candidate' : 'Voter'} registered successfully! Redirecting to login...`);
+      setShowProfileSummaryModal(false);
+      setSuccess(`${targetRole === 'candidate' ? 'Candidate' : 'Voter'} registered successfully!`);
 
+      // Auto-fill login credentials and switch view to Login
       setTimeout(() => {
         setViewMode('login');
-        setLoginForm({ identifier: regForm.email, password: regForm.password });
-        setSuccess('Registration completed! Please log in with your credentials.');
-      }, 1500);
+        setLoginForm({
+          identifier: regForm.registration_number || regForm.email,
+          password: regForm.password,
+        });
+        setSuccess('Registration completed! Your account credentials have been auto-filled for login.');
+      }, 1000);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to finalize registration.');
     } finally {
@@ -1178,29 +1214,232 @@ export default function UnifiedAuthHub() {
       ------------------------------------------------------------- */}
       {showFaceModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-[#E4E1D5] rounded-2xl p-6 max-w-lg w-full shadow-2xl relative">
+          <div className="bg-white border border-[#c0c9bb] rounded-3xl p-6 max-w-lg w-full shadow-2xl relative">
             <button
               onClick={() => setShowFaceModal(false)}
-              className="absolute top-4 right-4 text-[#6B6B60] hover:text-[#2C2C2C]"
+              className="absolute top-4 right-4 text-[#6B6B60] hover:text-[#2C2C2C] bg-[#f4f4f0] p-1.5 rounded-full"
             >
               <X className="w-5 h-5" />
             </button>
 
             <div className="text-center mb-4">
-              <h3 className="text-base font-bold text-[#1B5E20]">Biometric Face Scan</h3>
-              <p className="text-xs text-[#6B6B60] mt-1">Look straight into the camera to capture face profile</p>
+              <h3 className="text-lg font-extrabold text-[#00450d]">Biometric Face Capture</h3>
+              <p className="text-xs text-[#717a6d] mt-1">
+                Take a clear face photo for biometric identity verification
+              </p>
             </div>
 
             <FaceCapture
-              label="Capture Facial Biometrics for Registration"
+              label="Face Identity Verification"
               onCapture={handleFaceCaptured}
             />
 
-            {loading && (
-              <p className="text-center text-xs text-[#2E7D32] font-semibold mt-3 animate-pulse">
-                Finalizing account registration...
+            {error && (
+              <p className="text-center text-xs text-red-600 font-semibold mt-2">
+                {error}
               </p>
             )}
+
+            {faceData?.image && (
+              <div className="mt-4 pt-3 border-t border-[#c0c9bb]">
+                <button
+                  type="button"
+                  onClick={handleProceedToSummary}
+                  className="w-full py-3 bg-[#00450d] hover:bg-[#006017] text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center justify-center space-x-2"
+                >
+                  <span>Next: View Profile & Account Details</span>
+                  <ArrowRight className="w-4 h-4 text-[#a0f399]" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------
+          MODAL 4: REGISTRATION PROFILE & LOGIN CREDENTIALS SUMMARY
+      ------------------------------------------------------------- */}
+      {showProfileSummaryModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white border border-[#c0c9bb] rounded-3xl p-6 md:p-8 max-w-2xl w-full shadow-2xl relative my-8">
+            <button
+              onClick={() => setShowProfileSummaryModal(false)}
+              className="absolute top-5 right-5 text-[#6B6B60] hover:text-[#2C2C2C] bg-[#f4f4f0] p-1.5 rounded-full transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Modal Header */}
+            <div className="text-center mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-[#00450d] text-[#a0f399] flex items-center justify-center mx-auto mb-2 shadow-md">
+                <UserCheck className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-extrabold text-[#00450d]">Registration Profile & Account Credentials</h3>
+              <p className="text-xs text-[#717a6d] mt-1">
+                Please review your profile details and save your account login credentials.
+              </p>
+            </div>
+
+            {/* Error banner if any */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-xs flex items-center space-x-2 mb-4">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* Credentials Card (Username & Password Highlighted) */}
+            <div className="bg-[#00450d] text-white p-5 rounded-2xl mb-6 shadow-md relative overflow-hidden">
+              <div className="absolute -right-6 -bottom-6 w-28 h-28 bg-[#006017]/40 rounded-full blur-xl pointer-events-none"></div>
+              
+              <div className="flex items-center justify-between border-b border-[#006017] pb-3 mb-3">
+                <div className="flex items-center space-x-2">
+                  <Lock className="w-4 h-4 text-[#a0f399]" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#a0f399]">Account Login Credentials</span>
+                </div>
+                <span className="text-[10px] bg-[#a0f399] text-[#005312] font-black px-2.5 py-0.5 rounded-full uppercase">
+                  Important
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Full Name */}
+                <div className="bg-[#003608]/80 p-3 rounded-xl border border-[#006017]">
+                  <span className="text-[10px] font-bold text-[#a0f399] uppercase block">Full Name</span>
+                  <p className="text-sm font-extrabold text-white mt-0.5 truncate">{regForm.full_name || 'N/A'}</p>
+                </div>
+
+                {/* Login Username */}
+                <div className="bg-[#003608]/80 p-3 rounded-xl border border-[#006017]">
+                  <span className="text-[10px] font-bold text-[#a0f399] uppercase block">Login Username (Reg No / Email)</span>
+                  <p className="text-sm font-mono font-black text-[#a0f399] mt-0.5 truncate">
+                    {regForm.registration_number || regForm.email}
+                  </p>
+                </div>
+
+                {/* Account Password */}
+                <div className="bg-[#003608]/80 p-3 rounded-xl border border-[#006017] sm:col-span-2 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold text-[#a0f399] uppercase block">Account Password</span>
+                    <p className="text-sm font-mono font-bold text-white mt-0.5 tracking-wider">
+                      {showPasswordInSummary ? regForm.password : '••••••••••••'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordInSummary(!showPasswordInSummary)}
+                    className="p-2 text-[#a0f399] hover:bg-[#006017] rounded-lg transition-colors flex items-center space-x-1 text-xs font-bold"
+                  >
+                    {showPasswordInSummary ? (
+                      <>
+                        <EyeOff className="w-4 h-4" />
+                        <span>Hide</span>
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="w-4 h-4" />
+                        <span>Show</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-[#e2e3dd] mt-3 flex items-center space-x-1.5">
+                <Info className="w-3.5 h-3.5 text-[#a0f399] shrink-0" />
+                <span>Please write down or take a screenshot of your Username and Password for future logins.</span>
+              </p>
+            </div>
+
+            {/* Profile Summary Details & Face Image */}
+            <div className="bg-[#f4f4f0] border border-[#c0c9bb] rounded-2xl p-5 mb-6 space-y-4">
+              <div className="flex flex-col sm:flex-row items-center gap-5">
+                {/* Captured Face Image */}
+                <div className="relative shrink-0 text-center">
+                  {faceData?.image ? (
+                    <img
+                      src={faceData.image}
+                      alt={regForm.full_name}
+                      className="w-28 h-28 rounded-2xl object-cover border-2 border-[#00450d] shadow-md"
+                    />
+                  ) : (
+                    <div className="w-28 h-28 rounded-2xl bg-[#00450d] text-white flex flex-col items-center justify-center font-bold text-xs">
+                      No Photo
+                    </div>
+                  )}
+                  <span className="mt-1.5 inline-block bg-[#00450d] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    VERIFIED FACE
+                  </span>
+                </div>
+
+                {/* Profile Key Info */}
+                <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span className="font-bold text-[#717a6d] block text-[10px] uppercase">Father Name</span>
+                    <span className="font-bold text-[#1b1c1a]">{regForm.father_name || 'N/A'}</span>
+                  </div>
+                  <div>
+                    <span className="font-bold text-[#717a6d] block text-[10px] uppercase">CNIC Number</span>
+                    <span className="font-bold text-[#1b1c1a] font-mono">{regForm.cnic || 'N/A'}</span>
+                  </div>
+                  <div>
+                    <span className="font-bold text-[#717a6d] block text-[10px] uppercase">Email Address</span>
+                    <span className="font-bold text-[#1b1c1a]">{regForm.email || 'N/A'}</span>
+                  </div>
+                  <div>
+                    <span className="font-bold text-[#717a6d] block text-[10px] uppercase">Mobile Number</span>
+                    <span className="font-bold text-[#1b1c1a]">{regForm.mobile_number || 'N/A'}</span>
+                  </div>
+                  <div>
+                    <span className="font-bold text-[#717a6d] block text-[10px] uppercase">Department</span>
+                    <span className="font-bold text-[#1b1c1a]">{getSelectedDepartmentName()}</span>
+                  </div>
+                  <div>
+                    <span className="font-bold text-[#717a6d] block text-[10px] uppercase">Degree / Program</span>
+                    <span className="font-bold text-[#1b1c1a]">{getSelectedProgramName()}</span>
+                  </div>
+                  <div>
+                    <span className="font-bold text-[#717a6d] block text-[10px] uppercase">Batch & Semester</span>
+                    <span className="font-bold text-[#1b1c1a]">{regForm.batch || '2022-2026'} ({regForm.semester || '6th'})</span>
+                  </div>
+                  <div>
+                    <span className="font-bold text-[#717a6d] block text-[10px] uppercase">Registration Category</span>
+                    <span className="font-extrabold text-[#005312] bg-[#a0f399] px-2 py-0.5 rounded uppercase text-[10px] inline-block">
+                      {targetRole}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center space-x-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowProfileSummaryModal(false);
+                  setShowFaceModal(true);
+                }}
+                className="py-3 px-4 border border-[#717a6d] text-[#41493e] font-bold text-xs rounded-xl hover:bg-[#e9e8e4] transition-colors"
+              >
+                Back / Retake Photo
+              </button>
+              <button
+                type="button"
+                disabled={loading}
+                onClick={handleFinalRegistrationSubmit}
+                className="flex-1 py-3 bg-[#00450d] hover:bg-[#006017] text-white font-extrabold text-xs rounded-xl shadow-lg transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+              >
+                {loading ? (
+                  <span>Saving Registration...</span>
+                ) : (
+                  <>
+                    <span>Complete Registration & Go to Login</span>
+                    <ArrowRight className="w-4 h-4 text-[#a0f399]" />
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
