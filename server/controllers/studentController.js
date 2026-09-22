@@ -102,8 +102,6 @@ const sendOtp = async (req, res) => {
 
     return res.status(200).json({
       message: `OTP sent successfully to ${email}.`,
-      // For development/demo convenience, return otp code
-      otp_code: otpCode,
     });
   } catch (error) {
     console.error('Send OTP error:', error);

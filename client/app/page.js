@@ -307,13 +307,10 @@ export default function UnifiedAuthHub() {
   const triggerSendOtp = async () => {
     setLoading(true);
     setError('');
+    setOtpCode('');
     try {
       const res = await studentAPI.sendOtp({ email: regForm.email });
       setOtpSentMessage(res.data.message || `OTP sent to ${regForm.email}`);
-      if (res.data.otp_code) {
-        // Pre-fill for easy demonstration testing
-        setOtpCode(res.data.otp_code);
-      }
       setShowOtpModal(true);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to send OTP code to email.');
