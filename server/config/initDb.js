@@ -41,7 +41,16 @@ const initDb = async () => {
       `);
     }
 
-    // 2. Ensure departments table exists
+    // 2. Ensure faculties, departments, and programs tables exist
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS faculties (
+        id SERIAL PRIMARY KEY,
+        university_id INT DEFAULT 1,
+        faculty_name VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     await db.query(`
       CREATE TABLE IF NOT EXISTS departments (
         id SERIAL PRIMARY KEY,
@@ -52,6 +61,37 @@ const initDb = async () => {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS programs (
+        id SERIAL PRIMARY KEY,
+        department_id INT,
+        program_name VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Seed default departments & programs if departments table is empty
+    const deptCheck = await db.query('SELECT COUNT(*) FROM departments');
+    if (parseInt(deptCheck.rows[0]?.count || 0, 10) === 0) {
+      const d1 = await db.query(`INSERT INTO departments (department_name, faculty_id) VALUES ('Department of Computer Science', 1) RETURNING id`);
+      const d2 = await db.query(`INSERT INTO departments (department_name, faculty_id) VALUES ('Department of Software Engineering', 1) RETURNING id`);
+      const d3 = await db.query(`INSERT INTO departments (department_name, faculty_id) VALUES ('Department of Electrical Engineering', 1) RETURNING id`);
+      const d4 = await db.query(`INSERT INTO departments (department_name, faculty_id) VALUES ('Department of Business Administration', 1) RETURNING id`);
+      
+      const csId = d1.rows[0].id;
+      const seId = d2.rows[0].id;
+      const eeId = d3.rows[0].id;
+      const baId = d4.rows[0].id;
+
+      await db.query(`INSERT INTO programs (program_name, department_id) VALUES ('BS Computer Science', $1)`, [csId]);
+      await db.query(`INSERT INTO programs (program_name, department_id) VALUES ('BS Artificial Intelligence', $1)`, [csId]);
+      await db.query(`INSERT INTO programs (program_name, department_id) VALUES ('BS Cyber Security', $1)`, [csId]);
+      await db.query(`INSERT INTO programs (program_name, department_id) VALUES ('BS Software Engineering', $1)`, [seId]);
+      await db.query(`INSERT INTO programs (program_name, department_id) VALUES ('BS Electrical Engineering', $1)`, [eeId]);
+      await db.query(`INSERT INTO programs (program_name, department_id) VALUES ('BBA Business Administration', $1)`, [baId]);
+      console.log('✅ Default Departments and Programs seeded.');
+    }
 
     // 3. Ensure elections table has position, scope, CGPA limit, Terms, and Voter Register End columns
     await db.query(`ALTER TABLE elections ADD COLUMN IF NOT EXISTS position_title VARCHAR(255) DEFAULT 'President'`);

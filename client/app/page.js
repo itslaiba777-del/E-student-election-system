@@ -128,6 +128,7 @@ export default function UnifiedAuthHub() {
     fetchUniversities();
     fetchActiveElection();
     fetchPublicSettings();
+    fetchAllPrograms();
   }, []);
 
   const fetchPublicSettings = async () => {
@@ -174,22 +175,37 @@ export default function UnifiedAuthHub() {
       const res = await academicAPI.getAllDepartments();
       let depts = res.data.departments || [];
       setFaculties(depts);
+      fetchAllPrograms();
     } catch (err) {
       setFaculties([]);
     }
   };
 
+  const fetchAllPrograms = async () => {
+    try {
+      const res = await academicAPI.getAllPrograms();
+      let progs = res.data.programs || [];
+      setDepartments(progs);
+    } catch (err) {
+      setDepartments([]);
+    }
+  };
+
   const fetchDepartments = async (facId) => {
     if (!facId) {
-      setDepartments([]);
+      fetchAllPrograms();
       return;
     }
     try {
       const res = await academicAPI.getPrograms(facId);
       let progs = res.data.programs || [];
+      if (progs.length === 0) {
+        const allRes = await academicAPI.getAllPrograms();
+        progs = allRes.data.programs || [];
+      }
       setDepartments(progs);
     } catch (err) {
-      setDepartments([]);
+      fetchAllPrograms();
     }
   };
 
@@ -205,7 +221,7 @@ export default function UnifiedAuthHub() {
     if (facId) {
       fetchDepartments(facId);
     } else {
-      setDepartments([]);
+      fetchAllPrograms();
     }
   };
 
