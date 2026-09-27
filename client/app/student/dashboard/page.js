@@ -203,53 +203,105 @@ export default function StudentDashboardPage() {
         </div>
 
         {/* -------------------------------------------------------------
-            SECTION 1: STUDENT PROFILE CARD (Captured Image & General Info)
+            SECTION 1: COMPREHENSIVE STUDENT / VOTER PROFILE CARD
         ------------------------------------------------------------- */}
-        <div className="bg-white border border-[#c0c9bb] rounded-2xl p-6 shadow-xs flex flex-col md:flex-row items-center md:items-start gap-6">
-          {/* Profile Picture */}
-          <div className="relative shrink-0">
-            {student.photo_url ? (
-              <img
-                src={student.photo_url}
-                alt={student.full_name}
-                className="w-28 h-28 rounded-2xl object-cover border-2 border-[#00450d] shadow-sm"
-              />
-            ) : (
-              <div className="w-28 h-28 rounded-2xl bg-[#00450d] text-white flex flex-col items-center justify-center font-bold shadow-sm">
-                <User className="w-10 h-10 mb-1" />
-                <span className="text-xs">Profile</span>
-              </div>
-            )}
-            <span className="absolute -bottom-2 right-0 bg-[#a0f399] text-[#005312] text-[10px] font-black px-2 py-0.5 rounded-md border border-[#00450d]">
-              VERIFIED
-            </span>
-          </div>
-
-          {/* Student General Information */}
-          <div className="flex-1 space-y-3 text-center md:text-left w-full">
-            <div>
-              <h2 className="text-xl font-extrabold text-[#00450d]">{student.full_name}</h2>
-              <p className="text-xs font-semibold text-[#717a6d]">{student.email}</p>
+        <div className="bg-white border border-[#c0c9bb] rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-6 border-b border-[#c0c9bb] pb-6">
+            {/* Captured Profile Picture */}
+            <div className="relative shrink-0 text-center">
+              {student.profile_image_url || student.photo_url ? (
+                <img
+                  src={
+                    (student.profile_image_url || student.photo_url).startsWith('http') ||
+                    (student.profile_image_url || student.photo_url).startsWith('data:')
+                      ? (student.profile_image_url || student.photo_url)
+                      : `http://localhost:5000${student.profile_image_url || student.photo_url}`
+                  }
+                  alt={student.full_name}
+                  className="w-32 h-32 rounded-2xl object-cover border-4 border-[#00450d] shadow-md"
+                />
+              ) : (
+                <div className="w-32 h-32 rounded-2xl bg-[#00450d] text-white flex flex-col items-center justify-center font-bold shadow-md">
+                  <User className="w-12 h-12 mb-1 text-[#a0f399]" />
+                  <span className="text-[11px]">No Photo</span>
+                </div>
+              )}
+              <span className="mt-2 inline-flex items-center space-x-1 bg-[#00450d] text-white text-[10px] font-black px-3 py-1 rounded-full shadow">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#a0f399]" />
+                <span className="uppercase">{student.user_role || student.role || 'VOTER'}</span>
+              </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-              <div className="bg-[#f4f4f0] p-3 rounded-xl border border-[#c0c9bb]/60 space-y-0.5">
-                <span className="text-[10px] font-bold uppercase text-[#717a6d]">Registration Number</span>
-                <p className="text-xs font-mono font-extrabold text-[#1b1c1a]">{student.registration_number}</p>
+            {/* General Header Details */}
+            <div className="flex-1 text-center md:text-left space-y-2 w-full">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                <div>
+                  <h2 className="text-2xl font-black text-[#00450d]">{student.full_name || 'Student Profile'}</h2>
+                  <p className="text-xs font-semibold text-[#717a6d] mt-0.5">{student.email || 'N/A'}</p>
+                </div>
+                <span className="self-center md:self-start px-3.5 py-1 bg-[#e8f5e9] text-[#005312] border border-[#a0f399] text-xs font-extrabold rounded-full uppercase">
+                  {student.status || 'VERIFIED ACTIVE'}
+                </span>
               </div>
 
-              <div className="bg-[#f4f4f0] p-3 rounded-xl border border-[#c0c9bb]/60 space-y-0.5">
-                <span className="text-[10px] font-bold uppercase text-[#717a6d]">CNIC Number</span>
-                <p className="text-xs font-mono font-extrabold text-[#1b1c1a]">{student.cnic}</p>
+              <p className="text-xs text-[#41493e] font-bold pt-1">
+                {student.university_name || 'COMSATS University Islamabad'}
+              </p>
+            </div>
+          </div>
+
+          {/* Detailed Student Information Grid */}
+          <div>
+            <h3 className="text-xs font-black uppercase tracking-wider text-[#00450d] mb-4 flex items-center space-x-2">
+              <FileCheck className="w-4 h-4 text-[#005312]" />
+              <span>Personal & Academic Details</span>
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="bg-[#f4f4f0] p-3.5 rounded-xl border border-[#c0c9bb]/60 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-[#717a6d] block">Father Name</span>
+                <p className="text-xs font-bold text-[#1b1c1a]">{student.father_name || 'N/A'}</p>
               </div>
 
-              <div className="bg-[#f4f4f0] p-3 rounded-xl border border-[#c0c9bb]/60 space-y-0.5">
-                <span className="text-[10px] font-bold uppercase text-[#717a6d]">Department</span>
-                <p className="text-xs font-bold text-[#1b1c1a]">{student.department_name}</p>
+              <div className="bg-[#f4f4f0] p-3.5 rounded-xl border border-[#c0c9bb]/60 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-[#717a6d] block">Registration Number</span>
+                <p className="text-xs font-mono font-black text-[#00450d]">{student.registration_number || 'N/A'}</p>
               </div>
 
-              <div className="bg-[#f4f4f0] p-3 rounded-xl border border-[#c0c9bb]/60 space-y-0.5">
-                <span className="text-[10px] font-bold uppercase text-[#717a6d]">Voting Status</span>
+              <div className="bg-[#f4f4f0] p-3.5 rounded-xl border border-[#c0c9bb]/60 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-[#717a6d] block">CNIC Number</span>
+                <p className="text-xs font-mono font-bold text-[#1b1c1a]">{student.cnic || 'N/A'}</p>
+              </div>
+
+              <div className="bg-[#f4f4f0] p-3.5 rounded-xl border border-[#c0c9bb]/60 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-[#717a6d] block">Email Address</span>
+                <p className="text-xs font-semibold text-[#1b1c1a] truncate">{student.email || 'N/A'}</p>
+              </div>
+
+              <div className="bg-[#f4f4f0] p-3.5 rounded-xl border border-[#c0c9bb]/60 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-[#717a6d] block">Mobile Number</span>
+                <p className="text-xs font-bold text-[#1b1c1a]">{student.mobile_number || 'N/A'}</p>
+              </div>
+
+              <div className="bg-[#f4f4f0] p-3.5 rounded-xl border border-[#c0c9bb]/60 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-[#717a6d] block">Department</span>
+                <p className="text-xs font-bold text-[#1b1c1a]">{student.department_name || 'Computer Science Department'}</p>
+              </div>
+
+              <div className="bg-[#f4f4f0] p-3.5 rounded-xl border border-[#c0c9bb]/60 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-[#717a6d] block">Degree / Program</span>
+                <p className="text-xs font-bold text-[#1b1c1a]">{student.program_name || student.department_name || 'BS Computer Science'}</p>
+              </div>
+
+              <div className="bg-[#f4f4f0] p-3.5 rounded-xl border border-[#c0c9bb]/60 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-[#717a6d] block">Batch & Semester</span>
+                <p className="text-xs font-bold text-[#1b1c1a]">
+                  {student.batch || '2022-2026'} ({student.semester || '6th Semester'})
+                </p>
+              </div>
+
+              <div className="bg-[#f4f4f0] p-3.5 rounded-xl border border-[#c0c9bb]/60 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-[#717a6d] block">Voting Eligibility Status</span>
                 <p className="text-xs font-extrabold text-[#005312]">
                   {hasVoted ? 'Vote Cast Successfully' : 'Eligible Voter'}
                 </p>
@@ -261,45 +313,57 @@ export default function StudentDashboardPage() {
         {/* -------------------------------------------------------------
             SECTION 2: LIVE ELECTION BANNER & VOTING ACTION
         ------------------------------------------------------------- */}
-        <section className="space-y-4">
-          <div className="bg-[#00450d] text-white rounded-2xl p-6 md:p-8 shadow-md relative overflow-hidden space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <span className="bg-[#a0f399] text-[#005312] px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider">
-                  LIVE ELECTION BALLOT
-                </span>
-                <h3 className="text-xl md:text-2xl font-extrabold tracking-tight mt-2">
-                  {activeElection.title}
-                </h3>
-                <p className="text-xs text-[#acf4a4] mt-1">
-                  Contesting Seat: <strong className="text-white">{activeElection.position_title || 'President'}</strong>
-                </p>
+        {activeElection ? (
+          <section className="space-y-4">
+            <div className="bg-[#00450d] text-white rounded-2xl p-6 md:p-8 shadow-md relative overflow-hidden space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <span className="bg-[#a0f399] text-[#005312] px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider">
+                    LIVE ELECTION BALLOT
+                  </span>
+                  <h3 className="text-xl md:text-2xl font-extrabold tracking-tight mt-2">
+                    {activeElection.title}
+                  </h3>
+                  <p className="text-xs text-[#acf4a4] mt-1">
+                    Contesting Seat: <strong className="text-white">{activeElection.position_title || 'President'}</strong>
+                  </p>
+                </div>
+
+                {hasVoted ? (
+                  <div className="bg-white/10 backdrop-blur-xs border border-[#a0f399] px-6 py-3 rounded-2xl text-center shrink-0">
+                    <Lock className="w-6 h-6 text-[#a0f399] mx-auto mb-1" />
+                    <span className="text-xs font-extrabold text-[#a0f399] block">BALLOT LOCKED</span>
+                    <span className="text-[10px] text-white/80">Vote Cast</span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleStartVotingFlow}
+                    className="bg-[#a0f399] hover:bg-[#86e87f] text-[#00450d] px-6 py-3.5 rounded-2xl font-extrabold text-xs shadow-lg transition-all active:scale-95 flex items-center justify-center space-x-2 shrink-0"
+                  >
+                    <Vote className="w-5 h-5" />
+                    <span>Cast Vote / Open Ballot</span>
+                  </button>
+                )}
               </div>
 
-              {hasVoted ? (
-                <div className="bg-white/10 backdrop-blur-xs border border-[#a0f399] px-6 py-3 rounded-2xl text-center shrink-0">
-                  <Lock className="w-6 h-6 text-[#a0f399] mx-auto mb-1" />
-                  <span className="text-xs font-extrabold text-[#a0f399] block">BALLOT LOCKED</span>
-                  <span className="text-[10px] text-white/80">Vote Cast</span>
+              {hasVoted && (
+                <div className="p-4 bg-white/10 rounded-xl text-xs text-white border border-white/20">
+                  ✅ Your vote has been securely recorded for the {activeElection.position_title} position. Candidate list is locked for your profile. Election results will be published once voting ends.
                 </div>
-              ) : (
-                <button
-                  onClick={handleStartVotingFlow}
-                  className="bg-[#a0f399] hover:bg-[#86e87f] text-[#00450d] px-6 py-3.5 rounded-2xl font-extrabold text-xs shadow-lg transition-all active:scale-95 flex items-center justify-center space-x-2 shrink-0"
-                >
-                  <Vote className="w-5 h-5" />
-                  <span>Cast Vote / Open Ballot</span>
-                </button>
               )}
             </div>
-
-            {hasVoted && (
-              <div className="p-4 bg-white/10 rounded-xl text-xs text-white border border-white/20">
-                ✅ Your vote has been securely recorded for the {activeElection.position_title} position. Candidate list is locked for your profile. Election results will be published once voting ends.
-              </div>
-            )}
+          </section>
+        ) : (
+          <div className="bg-white border border-[#c0c9bb] rounded-2xl p-6 text-center space-y-2">
+            <div className="w-12 h-12 rounded-2xl bg-[#f4f4f0] text-[#00450d] flex items-center justify-center mx-auto mb-2 border border-[#c0c9bb]">
+              <Clock className="w-6 h-6" />
+            </div>
+            <h3 className="font-extrabold text-[#00450d] text-base">No Active Elections Currently</h3>
+            <p className="text-xs text-[#717a6d] max-w-md mx-auto leading-relaxed">
+              There are no live elections scheduled at this moment. You will be notified when a new election is announced.
+            </p>
           </div>
-        </section>
+        )}
 
         {/* -------------------------------------------------------------
             MODAL 1: OTP VERIFICATION BEFORE VOTING
