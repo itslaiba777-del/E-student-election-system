@@ -6,12 +6,25 @@ import { LayoutDashboard, Vote, History, UserCheck, Settings, LogOut, Shield } f
 export default function StudentSidebar() {
   const pathname = usePathname();
 
-  const navItems = [
+  let userRole = 'voter';
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('user');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        userRole = parsed.role || parsed.user_role || 'voter';
+      }
+    } catch (e) {}
+  }
+
+  const allNavItems = [
     { name: 'Dashboard', href: '/student/dashboard', icon: LayoutDashboard },
     { name: 'My Profile', href: '/student/profile', icon: UserCheck },
-    { name: 'Candidate Portal', href: '/student/candidate-nomination', icon: Vote },
+    { name: 'Candidate Portal', href: '/student/candidate-nomination', icon: Vote, candidateOnly: true },
     { name: 'Election Results', href: '/student/results', icon: History },
   ];
+
+  const navItems = allNavItems.filter((item) => !item.candidateOnly || userRole === 'candidate');
 
   const handleLogout = () => {
     if (typeof window !== 'undefined') {
