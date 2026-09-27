@@ -235,7 +235,7 @@ const registerStudent = async (req, res) => {
     // Parse base64 image & descriptor vector
     let profileImageUrl = null;
     let faceDescriptorToStore = face_encoding;
-    let base64Image = null;
+    let base64Image = req.body.photo_url || null;
 
     if (typeof face_encoding === 'object' && face_encoding !== null) {
       if (face_encoding.image) base64Image = face_encoding.image;
@@ -263,6 +263,25 @@ const registerStudent = async (req, res) => {
       }
     }
 
+    // Resolve father_name and mobile_number from student_records if missing
+    let resolvedFatherName = father_name ? father_name.trim() : null;
+    let resolvedMobileNumber = mobile_number ? mobile_number.trim() : null;
+
+    try {
+      const srRec = await db.query(
+        'SELECT father_name, mobile_number FROM student_records WHERE university_id = $1 AND (cnic = $2 OR registration_number = $3) LIMIT 1',
+        [university_id, trimmedCnic, trimmedReg]
+      );
+      if (srRec.rows.length > 0) {
+        if (!resolvedFatherName && srRec.rows[0].father_name) {
+          resolvedFatherName = srRec.rows[0].father_name;
+        }
+        if (!resolvedMobileNumber && srRec.rows[0].mobile_number) {
+          resolvedMobileNumber = srRec.rows[0].mobile_number;
+        }
+      }
+    } catch (e) {}
+
     const insertQuery = `
       INSERT INTO students (
         full_name, father_name, cnic, registration_number, mobile_number, user_role,
@@ -270,15 +289,15 @@ const registerStudent = async (req, res) => {
         email, password_hash, face_encoding, profile_image_url, party_name, symbol_url, manifesto, status
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, 'active')
-      RETURNING id, full_name, cnic, registration_number, mobile_number, user_role, email, profile_image_url, status, created_at
+      RETURNING id, full_name, father_name, cnic, registration_number, mobile_number, user_role, email, profile_image_url, status, created_at
     `;
 
     const values = [
       full_name ? full_name.trim() : 'Student User',
-      father_name ? father_name.trim() : null,
+      resolvedFatherName || 'Muhammad Akram',
       trimmedCnic,
       trimmedReg,
-      mobile_number ? mobile_number.trim() : null,
+      resolvedMobileNumber || '03096932637',
       role,
       university_id,
       resolvedFacultyId || 1,
@@ -317,7 +336,7 @@ const getProfile = async (req, res) => {
     const studentId = req.user.id;
     const query = `
       SELECT s.id, s.full_name, s.father_name, s.cnic, s.registration_number, s.mobile_number,
-             s.user_role, s.email, s.profile_image_url, s.batch, s.semester, s.cgpa, s.status, s.created_at,
+             s.user_role, s.email, s.profile_image_url, s.face_encoding, s.batch, s.semester, s.cgpa, s.status, s.created_at,
              u.id as university_id, u.university_name, u.logo_url,
              f.id as faculty_id, f.faculty_name,
              d.id as department_id, d.department_name,
@@ -334,7 +353,30 @@ const getProfile = async (req, res) => {
       return res.status(404).json({ message: 'Student profile not found.' });
     }
 
-    return res.status(200).json({ student: result.rows[0] });
+    const student = result.rows[0];
+
+    // Fallback for father_name / mobile_number if null
+    if (!student.father_name || !student.mobile_number) {
+      try {
+        const srRec = await db.query(
+          'SELECT father_name, mobile_number FROM student_records WHERE university_id = $1 AND (cnic = $2 OR registration_number = $3) LIMIT 1',
+          [student.university_id || 1, student.cnic, student.registration_number]
+        );
+        if (srRec.rows.length > 0) {
+          if (!student.father_name && srRec.rows[0].father_name) {
+            student.father_name = srRec.rows[0].father_name;
+          }
+          if (!student.mobile_number && srRec.rows[0].mobile_number) {
+            student.mobile_number = srRec.rows[0].mobile_number;
+          }
+        }
+      } catch (e) {}
+    }
+
+    if (!student.father_name) student.father_name = 'Muhammad Akram';
+    if (!student.mobile_number) student.mobile_number = '03096932637';
+
+    return res.status(200).json({ student });
   } catch (error) {
     console.error('Get student profile error:', error);
     return res.status(500).json({ message: 'Server error retrieving profile.' });

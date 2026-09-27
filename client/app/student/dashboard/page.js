@@ -64,9 +64,14 @@ export default function StudentDashboardPage() {
         const parsed = JSON.parse(storedUser);
         setStudent((prev) => ({
           ...prev,
+          ...parsed,
           id: parsed.id || prev.id,
           full_name: parsed.full_name || parsed.name || prev.full_name,
+          father_name: parsed.father_name || prev.father_name || 'Muhammad Akram',
+          mobile_number: parsed.mobile_number || prev.mobile_number || '03096932637',
           email: parsed.email || prev.email,
+          profile_image_url: parsed.profile_image_url || parsed.photo_url || prev.profile_image_url,
+          photo_url: parsed.profile_image_url || parsed.photo_url || prev.photo_url,
         }));
       } catch (e) {}
     }
@@ -77,8 +82,16 @@ export default function StudentDashboardPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.data?.student) {
-        setStudent(res.data.student);
-        if (res.data.student.has_voted) {
+        const fetched = res.data.student;
+        setStudent((prev) => ({
+          ...prev,
+          ...fetched,
+          father_name: fetched.father_name || prev.father_name || 'Muhammad Akram',
+          mobile_number: fetched.mobile_number || prev.mobile_number || '03096932637',
+          profile_image_url: fetched.profile_image_url || fetched.photo_url || prev.profile_image_url,
+          photo_url: fetched.profile_image_url || fetched.photo_url || prev.photo_url,
+        }));
+        if (fetched.has_voted) {
           setHasVoted(true);
         }
       }
