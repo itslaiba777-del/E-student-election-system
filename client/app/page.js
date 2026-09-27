@@ -143,7 +143,6 @@ export default function UnifiedAuthHub() {
     fetchUniversities();
     fetchActiveElection();
     fetchPublicSettings();
-    fetchAllPrograms();
   }, []);
 
   const fetchPublicSettings = async () => {
@@ -190,37 +189,22 @@ export default function UnifiedAuthHub() {
       const res = await academicAPI.getAllDepartments();
       let depts = res.data.departments || [];
       setFaculties(depts);
-      fetchAllPrograms();
     } catch (err) {
       setFaculties([]);
     }
   };
 
-  const fetchAllPrograms = async () => {
-    try {
-      const res = await academicAPI.getAllPrograms();
-      let progs = res.data.programs || [];
-      setDepartments(progs);
-    } catch (err) {
-      setDepartments([]);
-    }
-  };
-
   const fetchDepartments = async (facId) => {
     if (!facId) {
-      fetchAllPrograms();
+      setDepartments([]);
       return;
     }
     try {
       const res = await academicAPI.getPrograms(facId);
       let progs = res.data.programs || [];
-      if (progs.length === 0) {
-        const allRes = await academicAPI.getAllPrograms();
-        progs = allRes.data.programs || [];
-      }
       setDepartments(progs);
     } catch (err) {
-      fetchAllPrograms();
+      setDepartments([]);
     }
   };
 
@@ -236,7 +220,7 @@ export default function UnifiedAuthHub() {
     if (facId) {
       fetchDepartments(facId);
     } else {
-      fetchAllPrograms();
+      setDepartments([]);
     }
   };
 
@@ -715,10 +699,17 @@ export default function UnifiedAuthHub() {
                   </label>
                   <select
                     value={regForm.department_id}
+                    disabled={!regForm.faculty_id}
                     onChange={(e) => setRegForm({ ...regForm, department_id: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs font-semibold text-[#2C2C2C]"
+                    className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs font-semibold text-[#2C2C2C] disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-[#f4f4f0]"
                   >
-                    <option value="">-- Select Degree / Program --</option>
+                    <option value="">
+                      {!regForm.faculty_id
+                        ? '-- Select Department First --'
+                        : departments.length > 0
+                        ? '-- Select Degree / Program --'
+                        : '-- No Programs Available for this Department --'}
+                    </option>
                     {departments.map((d) => (
                       <option key={d.id} value={d.id}>{d.program_name || d.department_name}</option>
                     ))}
@@ -929,10 +920,17 @@ export default function UnifiedAuthHub() {
                     </label>
                     <select
                       value={regForm.department_id}
+                      disabled={!regForm.faculty_id}
                       onChange={(e) => setRegForm({ ...regForm, department_id: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs font-semibold text-[#2C2C2C]"
+                      className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs font-semibold text-[#2C2C2C] disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-[#f4f4f0]"
                     >
-                      <option value="">-- Select Degree / Program --</option>
+                      <option value="">
+                        {!regForm.faculty_id
+                          ? '-- Select Department First --'
+                          : departments.length > 0
+                          ? '-- Select Degree / Program --'
+                          : '-- No Programs Available for this Department --'}
+                      </option>
                       {departments.map((d) => (
                         <option key={d.id} value={d.id}>{d.program_name || d.department_name}</option>
                       ))}
