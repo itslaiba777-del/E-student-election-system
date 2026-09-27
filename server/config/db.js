@@ -72,6 +72,53 @@ const memoryDb = {
     { id: 6, program_name: 'BBA Business Administration', department_id: 4 },
   ],
   students: [],
+  student_records: [
+    {
+      id: 1,
+      university_id: 1,
+      cnic: '3456787654567',
+      registration_number: 'FA22BCS056',
+      full_name: 'Abdullah',
+      father_name: 'Muhammad Akram',
+      dob: '2002-05-14',
+      faculty_id: 1,
+      faculty_name: 'Department of Computer Science',
+      department_id: 1,
+      department_name: 'Department of Computer Science',
+      program_id: 1,
+      program_name: 'BS Computer Science',
+    },
+    {
+      id: 2,
+      university_id: 1,
+      cnic: '34567-8765456-7',
+      registration_number: 'FA22-BCS-056',
+      full_name: 'Abdullah',
+      father_name: 'Muhammad Akram',
+      dob: '2002-05-14',
+      faculty_id: 1,
+      faculty_name: 'Department of Computer Science',
+      department_id: 1,
+      department_name: 'Department of Computer Science',
+      program_id: 1,
+      program_name: 'BS Computer Science',
+    },
+    {
+      id: 3,
+      university_id: 1,
+      cnic: '35202-1234567-1',
+      registration_number: 'FA21-BCS-042',
+      full_name: 'Hamza Ahmed',
+      father_name: 'Ahmed Hassan',
+      dob: '2001-08-20',
+      faculty_id: 1,
+      faculty_name: 'Department of Computer Science',
+      department_id: 1,
+      department_name: 'Department of Computer Science',
+      program_id: 1,
+      program_name: 'BS Computer Science',
+    },
+  ],
   elections: [],
   candidates: [],
   votes: [],
@@ -143,6 +190,27 @@ const safeQuery = async (text, params = []) => {
     // 4. SELECT FROM system_settings
     if (queryStr.includes('from system_settings')) {
       return { rows: memoryDb.system_settings };
+    }
+
+    // 4b. SELECT FROM student_records
+    if (queryStr.includes('from student_records')) {
+      if (params && params.length >= 3) {
+        const cnicVal = (params[1] || '').toString().trim().replace(/-/g, '');
+        const regVal = (params[2] || '').toString().trim().replace(/-/g, '');
+        const match = (memoryDb.student_records || []).find((sr) => {
+          const srCnic = sr.cnic.replace(/-/g, '');
+          const srReg = sr.registration_number.replace(/-/g, '');
+          return (srCnic === cnicVal || srCnic.includes(cnicVal)) && (srReg === regVal || srReg.includes(regVal));
+        });
+        if (match) return { rows: [match] };
+      }
+      return { rows: memoryDb.student_records || [] };
+    }
+
+    // 4c. DELETE FROM students
+    if (queryStr.startsWith('delete from students')) {
+      memoryDb.students = [];
+      return { rows: [] };
     }
 
     // DELETE FROM departments
