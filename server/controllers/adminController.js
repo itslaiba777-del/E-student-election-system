@@ -64,11 +64,11 @@ const getStudentsList = async (req, res) => {
     }
 
     const query = `
-      SELECT s.id, s.cnic, s.registration_number, s.email, s.status, s.created_at,
+      SELECT s.id, s.full_name, s.father_name, s.cnic, s.registration_number, s.mobile_number, s.user_role, s.email, s.profile_image_url, s.batch, s.semester, s.cgpa, s.status, s.created_at,
              f.faculty_name, d.department_name, p.program_name
       FROM students s
-      JOIN faculties f ON s.faculty_id = f.id
-      JOIN departments d ON s.department_id = d.id
+      LEFT JOIN faculties f ON s.faculty_id = f.id
+      LEFT JOIN departments d ON s.department_id = d.id
       LEFT JOIN programs p ON s.program_id = p.id
       WHERE ${whereClauses.join(' AND ')}
       ORDER BY s.created_at DESC

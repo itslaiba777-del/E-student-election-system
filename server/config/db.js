@@ -259,8 +259,98 @@ const safeQuery = async (text, params = []) => {
       return { rows: memoryDb.programs || [] };
     }
 
+    // INSERT INTO students
+    if (queryStr.startsWith('insert into students')) {
+      const newStudent = {
+        id: (memoryDb.students || []).length + 1,
+        full_name: params[0] || 'Student User',
+        father_name: params[1] || null,
+        cnic: params[2] || '',
+        registration_number: params[3] || '',
+        mobile_number: params[4] || null,
+        user_role: params[5] || 'voter',
+        university_id: params[6] || 1,
+        faculty_id: params[7] || 1,
+        department_id: params[8] || 1,
+        program_id: params[9] || null,
+        batch: params[10] || null,
+        semester: params[11] || null,
+        cgpa: params[12] || null,
+        email: params[13] || '',
+        password_hash: params[14] || '',
+        face_encoding: params[15] || null,
+        profile_image_url: params[16] || null,
+        party_name: params[17] || null,
+        symbol_url: params[18] || null,
+        manifesto: params[19] || null,
+        status: 'active',
+        created_at: new Date().toISOString(),
+      };
+      if (!memoryDb.students) memoryDb.students = [];
+      memoryDb.students.unshift(newStudent);
+      return { rows: [newStudent] };
+    }
+
+    // UPDATE students
+    if (queryStr.startsWith('update students')) {
+      const statusVal = params[0];
+      const studentId = params[1];
+      const st = (memoryDb.students || []).find((s) => s.id == studentId);
+      if (st) {
+        st.status = statusVal;
+        return { rows: [st] };
+      }
+      return { rows: [] };
+    }
+
+    // INSERT INTO candidates
+    if (queryStr.startsWith('insert into candidates')) {
+      const newCand = {
+        id: (memoryDb.candidates || []).length + 1,
+        name: params[0],
+        party: params[1],
+        manifesto: params[2],
+        photo_url: params[3],
+        symbol_image_url: params[4],
+        faculty_id: params[5],
+        department_id: params[6],
+        program_id: params[7],
+        election_id: params[8],
+        status: params[9] || 'pending',
+        created_at: new Date().toISOString(),
+      };
+      if (!memoryDb.candidates) memoryDb.candidates = [];
+      memoryDb.candidates.unshift(newCand);
+      return { rows: [newCand] };
+    }
+
+    // UPDATE candidates
+    if (queryStr.startsWith('update candidates')) {
+      const statusVal = params[0];
+      const candId = params[1];
+      const cand = (memoryDb.candidates || []).find((c) => c.id == candId);
+      if (cand) {
+        cand.status = statusVal;
+        return { rows: [cand] };
+      }
+      return { rows: [] };
+    }
+
     // 7. SELECT FROM students
     if (queryStr.includes('from students')) {
+      if (params && params.length > 0) {
+        const val = (params[0] || '').toString().toLowerCase();
+        const matches = (memoryDb.students || []).filter((s) => {
+          return (
+            (s.email && s.email.toLowerCase() === val) ||
+            (s.cnic && s.cnic.toLowerCase() === val) ||
+            (s.registration_number && s.registration_number.toLowerCase() === val) ||
+            (s.id && s.id.toString() === val) ||
+            (s.university_id && s.university_id.toString() === val)
+          );
+        });
+        if (matches.length > 0) return { rows: matches };
+      }
       return { rows: memoryDb.students || [] };
     }
 

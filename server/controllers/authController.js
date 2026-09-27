@@ -189,13 +189,13 @@ const studentLogin = async (req, res) => {
     const query = `
       SELECT s.*, u.university_name, f.faculty_name, d.department_name, p.program_name
       FROM students s
-      JOIN universities u ON s.university_id = u.id
-      JOIN faculties f ON s.faculty_id = f.id
-      JOIN departments d ON s.department_id = d.id
+      LEFT JOIN universities u ON s.university_id = u.id
+      LEFT JOIN faculties f ON s.faculty_id = f.id
+      LEFT JOIN departments d ON s.department_id = d.id
       LEFT JOIN programs p ON s.program_id = p.id
-      WHERE s.university_id = $1 AND (s.cnic = $2 OR s.registration_number = $2)
+      WHERE s.university_id = $1 AND (LOWER(s.cnic) = $2 OR LOWER(s.registration_number) = $2)
     `;
-    const result = await db.query(query, [university_id, identifier.trim()]);
+    const result = await db.query(query, [university_id, identifier.trim().toLowerCase()]);
     if (result.rows.length === 0) {
       await logLoginAttempt('student', identifier, 'failed', ip);
       return res.status(401).json({ message: 'Incorrect credentials or record not found.' });
@@ -358,13 +358,13 @@ const unifiedLogin = async (req, res) => {
     const studentQuery = `
       SELECT s.*, u.university_name, f.faculty_name, d.department_name, p.program_name
       FROM students s
-      JOIN universities u ON s.university_id = u.id
-      JOIN faculties f ON s.faculty_id = f.id
-      JOIN departments d ON s.department_id = d.id
+      LEFT JOIN universities u ON s.university_id = u.id
+      LEFT JOIN faculties f ON s.faculty_id = f.id
+      LEFT JOIN departments d ON s.department_id = d.id
       LEFT JOIN programs p ON s.program_id = p.id
-      WHERE LOWER(s.email) = $1 OR s.cnic = $2 OR s.registration_number = $2
+      WHERE LOWER(s.email) = $1 OR LOWER(s.cnic) = $1 OR LOWER(s.registration_number) = $1
     `;
-    const studentRes = await db.query(studentQuery, [lowerIdentifier, cleanIdentifier]);
+    const studentRes = await db.query(studentQuery, [lowerIdentifier]);
     if (studentRes.rows.length > 0) {
       const student = studentRes.rows[0];
       if (student.status !== 'locked') {

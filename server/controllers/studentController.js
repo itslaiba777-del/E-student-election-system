@@ -323,9 +323,9 @@ const getProfile = async (req, res) => {
              d.id as department_id, d.department_name,
              p.id as program_id, p.program_name
       FROM students s
-      JOIN universities u ON s.university_id = u.id
-      JOIN faculties f ON s.faculty_id = f.id
-      JOIN departments d ON s.department_id = d.id
+      LEFT JOIN universities u ON s.university_id = u.id
+      LEFT JOIN faculties f ON s.faculty_id = f.id
+      LEFT JOIN departments d ON s.department_id = d.id
       LEFT JOIN programs p ON s.program_id = p.id
       WHERE s.id = $1
     `;
