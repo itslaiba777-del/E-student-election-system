@@ -25,18 +25,21 @@ export default function StudentProfilePage() {
   const router = useRouter();
 
   const [student, setStudent] = useState({
-    full_name: 'Student User',
-    email: 'student@university.edu',
-    cnic: '61101-1234567-1',
-    registration_number: '2024-QAU-123',
-    mobile_number: '+92 300 1234567',
-    university_name: 'Quaid-i-Azam University',
-    faculty_name: 'Faculty of Natural Sciences',
-    department_name: 'Computer Science',
+    full_name: 'Abdullah',
+    email: 'abdullahakram.official.810@gmail.com',
+    cnic: '3456787654567',
+    registration_number: 'FA22BCS056',
+    mobile_number: '03096932637',
+    father_name: 'Muhammad Akram',
+    university_name: 'COMSATS University Islamabad',
+    faculty_name: 'Department of Computer Science',
+    department_name: 'Department of Computer Science',
     program_name: 'BS Computer Science',
     user_role: 'voter',
     status: 'active',
-    created_at: '2024-01-15',
+    created_at: '2026-01-15',
+    profile_image_url: null,
+    photo_url: null,
     face_encoding: null,
   });
 
@@ -54,13 +57,32 @@ export default function StudentProfilePage() {
       if (savedUser) {
         try {
           const parsed = JSON.parse(savedUser);
-          setStudent((prev) => ({ ...prev, ...parsed }));
+          setStudent((prev) => ({
+            ...prev,
+            ...parsed,
+            university_name: parsed.university_name || 'COMSATS University Islamabad',
+            department_name: parsed.department_name || 'Department of Computer Science',
+            program_name: parsed.program_name || 'BS Computer Science',
+            father_name: parsed.father_name || 'Muhammad Akram',
+            mobile_number: parsed.mobile_number || '03096932637',
+            profile_image_url: parsed.profile_image_url || parsed.photo_url || prev.profile_image_url,
+          }));
         } catch (e) {}
       }
 
       const res = await studentAPI.getProfile();
       if (res.data?.student) {
-        setStudent((prev) => ({ ...prev, ...res.data.student }));
+        const fetched = res.data.student;
+        setStudent((prev) => ({
+          ...prev,
+          ...fetched,
+          university_name: fetched.university_name || 'COMSATS University Islamabad',
+          department_name: fetched.department_name || 'Department of Computer Science',
+          program_name: fetched.program_name || 'BS Computer Science',
+          father_name: fetched.father_name || 'Muhammad Akram',
+          mobile_number: fetched.mobile_number || '03096932637',
+          profile_image_url: fetched.profile_image_url || fetched.photo_url || prev.profile_image_url,
+        }));
       }
 
       // Check if student has a candidate nomination
@@ -292,14 +314,14 @@ export default function StudentProfilePage() {
                 <div className="p-3.5 bg-[#e8f5e9] rounded-xl border border-[#a0f399]">
                   <span className="text-[10px] font-extrabold text-[#005312] uppercase block">🏢 Department Name</span>
                   <p className="text-xs font-black text-[#00450d] mt-1">
-                    {student.faculty_name ? student.faculty_name.replace('Faculty of ', '').replace('School of ', '') + ' Department' : student.department_name || 'Computer Science Department'}
+                    {student.department_name || 'Department of Computer Science'}
                   </p>
                 </div>
 
                 <div className="p-3.5 bg-[#faf9f5] rounded-xl border border-[#c0c9bb]/60">
                   <span className="text-[10px] font-extrabold text-[#717a6d] uppercase">🎓 Degree / Program Name</span>
                   <p className="text-xs font-bold text-[#1b1c1a] mt-1">
-                    {student.department_name ? student.department_name : (student.program_name || 'BS Computer Science (BSCS)')}
+                    {student.program_name || 'BS Computer Science'}
                   </p>
                 </div>
               </div>

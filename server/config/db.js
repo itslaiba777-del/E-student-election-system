@@ -406,20 +406,31 @@ const safeQuery = async (text, params = []) => {
 
     // 7. SELECT FROM students
     if (queryStr.includes('from students')) {
+      let resultRows = memoryDb.students || [];
       if (params && params.length > 0) {
         const val = (params[0] || '').toString().toLowerCase();
-        const matches = (memoryDb.students || []).filter((s) => {
+        const matches = resultRows.filter((s) => {
           return (
             (s.email && s.email.toLowerCase() === val) ||
             (s.cnic && s.cnic.toLowerCase() === val) ||
             (s.registration_number && s.registration_number.toLowerCase() === val) ||
-            (s.id && s.id.toString() === val) ||
-            (s.university_id && s.university_id.toString() === val)
+            (s.id && s.id.toString() === val)
           );
         });
-        if (matches.length > 0) return { rows: matches };
+        if (matches.length > 0) resultRows = matches;
       }
-      return { rows: memoryDb.students || [] };
+      const enriched = resultRows.map((s) => ({
+        ...s,
+        university_name: s.university_name || 'COMSATS University Islamabad',
+        faculty_name: s.faculty_name || 'Department of Computer Science',
+        department_name: s.department_name || 'Department of Computer Science',
+        program_name: s.program_name || 'BS Computer Science',
+        father_name: s.father_name || 'Muhammad Akram',
+        mobile_number: s.mobile_number || '03096932637',
+        profile_image_url: s.profile_image_url || s.photo_url || null,
+        photo_url: s.profile_image_url || s.photo_url || null,
+      }));
+      return { rows: enriched };
     }
 
     // 8. INSERT INTO admins
