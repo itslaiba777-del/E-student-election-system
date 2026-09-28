@@ -83,6 +83,8 @@ export default function UnifiedAuthHub() {
   const [showFaceModal, setShowFaceModal] = useState(false);
   const [showProfileSummaryModal, setShowProfileSummaryModal] = useState(false);
   const [showPasswordInSummary, setShowPasswordInSummary] = useState(false);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegPassword, setShowRegPassword] = useState(false);
 
   const [otpCode, setOtpCode] = useState('');
   const [otpSentMessage, setOtpSentMessage] = useState('');
@@ -473,13 +475,24 @@ export default function UnifiedAuthHub() {
                     <Lock className="w-4 h-4" />
                   </span>
                   <input
-                    type="password"
+                    type={showLoginPassword ? 'text' : 'password'}
                     required
                     placeholder="Enter your password"
                     value={loginForm.password}
                     onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                    className="w-full pl-9 pr-3 py-2.5 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs md:text-sm text-[#2C2C2C] focus:outline-none focus:border-[#2E7D32] focus:ring-1 focus:ring-[#2E7D32]"
+                    className="w-full pl-9 pr-10 py-2.5 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs md:text-sm text-[#2C2C2C] focus:outline-none focus:border-[#2E7D32] focus:ring-1 focus:ring-[#2E7D32]"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginPassword(!showLoginPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#6B6B60] hover:text-[#1B5E20] focus:outline-none cursor-pointer"
+                  >
+                    {showLoginPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
                 </div>
               </div>
 
@@ -739,14 +752,23 @@ export default function UnifiedAuthHub() {
 
               <div>
                 <label className="block text-[11px] font-semibold text-[#2C2C2C] mb-1">Password</label>
-                <input
-                  type="password"
-                  required
-                  placeholder="Set account password"
-                  value={regForm.password}
-                  onChange={(e) => setRegForm({ ...regForm, password: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs text-[#2C2C2C]"
-                />
+                <div className="relative">
+                  <input
+                    type={showRegPassword ? 'text' : 'password'}
+                    required
+                    placeholder="Set account password"
+                    value={regForm.password}
+                    onChange={(e) => setRegForm({ ...regForm, password: e.target.value })}
+                    className="w-full pl-3 pr-10 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs text-[#2C2C2C]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRegPassword(!showRegPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#6B6B60] hover:text-[#1B5E20] focus:outline-none cursor-pointer"
+                  >
+                    {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center justify-between pt-3">
@@ -960,14 +982,23 @@ export default function UnifiedAuthHub() {
 
                 <div>
                   <label className="block text-[11px] font-semibold text-[#2C2C2C] mb-1">Password</label>
-                  <input
-                    type="password"
-                    required
-                    placeholder="Set password"
-                    value={regForm.password}
-                    onChange={(e) => setRegForm({ ...regForm, password: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs text-[#2C2C2C]"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showRegPassword ? 'text' : 'password'}
+                      required
+                      placeholder="Set password"
+                      value={regForm.password}
+                      onChange={(e) => setRegForm({ ...regForm, password: e.target.value })}
+                      className="w-full pl-3 pr-10 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs text-[#2C2C2C]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegPassword(!showRegPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#6B6B60] hover:text-[#1B5E20] focus:outline-none cursor-pointer"
+                    >
+                      {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between pt-3">
