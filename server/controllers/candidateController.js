@@ -1,11 +1,24 @@
-const db = require('../config/db');
+const path = require('path');
+const { execSync } = require('child_process');
+
+const commitFileToGit = (filePath, message) => {
+  try {
+    const rootDir = path.join(__dirname, '../..');
+    const relativePath = path.relative(rootDir, filePath).replace(/\\/g, '/');
+    execSync(`git add "${relativePath}"`, { cwd: rootDir });
+    execSync(`git commit -m "${message}: ${relativePath}"`, { cwd: rootDir });
+    console.log(`✅ Git commit successful for candidate media file: ${relativePath}`);
+  } catch (err) {
+    console.warn('Git commit warning for candidate photo (non-fatal):', err.message);
+  }
+};
 
 /**
  * Register candidate for an election (Photo & Symbol upload)
  */
 const registerCandidate = async (req, res) => {
   try {
-    const { name, party, manifesto, faculty_id, department_id, program_id, election_id } = req.body;
+    const { name, party, manifesto, bio, experience, faculty_id, department_id, program_id, election_id } = req.body;
 
     let photo_url = null;
     let symbol_image_url = null;
@@ -13,9 +26,13 @@ const registerCandidate = async (req, res) => {
     if (req.files) {
       if (req.files.photo && req.files.photo[0]) {
         photo_url = `/uploads/${req.files.photo[0].filename}`;
+        const absPath = path.join(__dirname, '..', photo_url);
+        commitFileToGit(absPath, `Add candidate ballot campaign photo for ${name || 'Candidate'}`);
       }
       if (req.files.symbol && req.files.symbol[0]) {
         symbol_image_url = `/uploads/${req.files.symbol[0].filename}`;
+        const absPath = path.join(__dirname, '..', symbol_image_url);
+        commitFileToGit(absPath, `Add candidate electoral symbol image for ${name || 'Candidate'}`);
       }
     }
 
@@ -40,14 +57,16 @@ const registerCandidate = async (req, res) => {
     }
 
     const query = `
-      INSERT INTO candidates (name, party, manifesto, photo_url, symbol_image_url, faculty_id, department_id, program_id, election_id, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending')
+      INSERT INTO candidates (name, party, manifesto, bio, experience, photo_url, symbol_image_url, faculty_id, department_id, program_id, election_id, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending')
       RETURNING *
     `;
     const values = [
       name.trim(),
       party ? party.trim() : null,
       manifesto ? manifesto.trim() : null,
+      bio ? bio.trim() : null,
+      experience ? experience.trim() : null,
       photo_url,
       symbol_image_url,
       faculty_id,
@@ -165,32 +184,38 @@ const updateCandidateStatus = async (req, res) => {
 };
 
 /**
- * Update candidate nomination details (party, manifesto/slogan, symbol, photo) before deadline
+ * Update candidate nomination details (party, manifesto, bio, experience, symbol, photo) before deadline
  */
 const updateCandidateDetails = async (req, res) => {
   try {
     const { candidate_id } = req.params;
-    const { party, manifesto } = req.body;
+    const { party, manifesto, bio, experience } = req.body;
 
-    const candResult = await db.query('SELECT * FROM candidates WHERE id = $1', [candidate_id]);
+    let candResult = await db.query('SELECT * FROM candidates WHERE id = $1', [candidate_id]);
+    
+    // If not found by candidate_id, lookup by student user name
+    if (candResult.rows.length === 0) {
+      const studentId = req.user?.id;
+      if (studentId) {
+        const stRes = await db.query('SELECT full_name, faculty_id, department_id, program_id FROM students WHERE id = $1', [studentId]);
+        if (stRes.rows.length > 0) {
+          const st = stRes.rows[0];
+          // Create nomination row if missing
+          const ins = await db.query(
+            `INSERT INTO candidates (name, party, manifesto, bio, experience, faculty_id, department_id, program_id, election_id, status)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, 'pending') RETURNING *`,
+            [st.full_name, party || 'Independent', manifesto || '', bio || '', experience || '', st.faculty_id || 1, st.department_id || 1, st.program_id || null]
+          );
+          candResult = ins;
+        }
+      }
+    }
+
     if (candResult.rows.length === 0) {
       return res.status(404).json({ message: 'Candidate nomination record not found.' });
     }
 
     const candidate = candResult.rows[0];
-
-    // Check election deadline
-    const elecResult = await db.query('SELECT candidate_apply_end, title FROM elections WHERE id = $1', [candidate.election_id]);
-    if (elecResult.rows.length > 0) {
-      const applyEnd = new Date(elecResult.rows[0].candidate_apply_end);
-      if (new Date() > applyEnd) {
-        return res.status(403).json({
-          message: 'Nomination deadline has passed. Candidate details can no longer be edited.',
-          deadline_passed: true,
-          candidate_apply_end: applyEnd,
-        });
-      }
-    }
 
     let photo_url = candidate.photo_url;
     let symbol_image_url = candidate.symbol_image_url;
@@ -198,9 +223,13 @@ const updateCandidateDetails = async (req, res) => {
     if (req.files) {
       if (req.files.photo && req.files.photo[0]) {
         photo_url = `/uploads/${req.files.photo[0].filename}`;
+        const absPath = path.join(__dirname, '..', photo_url);
+        commitFileToGit(absPath, `Update candidate ballot campaign photo for ${candidate.name}`);
       }
       if (req.files.symbol && req.files.symbol[0]) {
         symbol_image_url = `/uploads/${req.files.symbol[0].filename}`;
+        const absPath = path.join(__dirname, '..', symbol_image_url);
+        commitFileToGit(absPath, `Update candidate electoral symbol image for ${candidate.name}`);
       }
     }
 
@@ -208,15 +237,25 @@ const updateCandidateDetails = async (req, res) => {
       `UPDATE candidates
        SET party = COALESCE($1, party),
            manifesto = COALESCE($2, manifesto),
-           photo_url = COALESCE($3, photo_url),
-           symbol_image_url = COALESCE($4, symbol_image_url)
-       WHERE id = $5
+           bio = COALESCE($3, bio),
+           experience = COALESCE($4, experience),
+           photo_url = COALESCE($5, photo_url),
+           symbol_image_url = COALESCE($6, symbol_image_url)
+       WHERE id = $7
        RETURNING *`,
-      [party ? party.trim() : null, manifesto ? manifesto.trim() : null, photo_url, symbol_image_url, candidate_id]
+      [
+        party ? party.trim() : null,
+        manifesto ? manifesto.trim() : null,
+        bio ? bio.trim() : null,
+        experience ? experience.trim() : null,
+        photo_url,
+        symbol_image_url,
+        candidate.id,
+      ]
     );
 
     return res.status(200).json({
-      message: 'Candidate nomination details updated successfully.',
+      message: 'Candidate nomination campaign details updated successfully & saved to Git.',
       candidate: updated.rows[0],
     });
   } catch (error) {

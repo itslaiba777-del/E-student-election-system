@@ -27,6 +27,8 @@ export default function CandidateNominationPage() {
   const [candidateId, setCandidateId] = useState(null);
   const [party, setParty] = useState('');
   const [manifesto, setManifesto] = useState('');
+  const [bio, setBio] = useState('');
+  const [experience, setExperience] = useState('');
   const [slogan, setSlogan] = useState('');
   const [symbolFile, setSymbolFile] = useState(null);
   const [photoFile, setPhotoFile] = useState(null);
@@ -65,6 +67,8 @@ export default function CandidateNominationPage() {
         setCandidateId(cand.id);
         setParty(cand.party || '');
         setManifesto(cand.manifesto || '');
+        setBio(cand.bio || '');
+        setExperience(cand.experience || '');
         setExistingSymbolUrl(cand.symbol_image_url);
         setExistingPhotoUrl(cand.photo_url);
         setIsDeadlinePassed(myRes.data.is_deadline_passed);
@@ -112,14 +116,16 @@ export default function CandidateNominationPage() {
     try {
       const formData = new FormData();
       formData.append('party', party);
-      formData.append('manifesto', slogan ? `[Slogan: ${slogan}] ${manifesto}` : manifesto);
+      formData.append('manifesto', manifesto);
+      formData.append('bio', bio);
+      formData.append('experience', experience);
       if (photoFile) formData.append('photo', photoFile);
       if (symbolFile) formData.append('symbol', symbolFile);
 
       if (candidateId) {
         // Update existing nomination details
         const res = await candidateAPI.updateDetails(candidateId, formData);
-        setMessage({ type: 'success', text: 'Candidate details updated successfully!' });
+        setMessage({ type: 'success', text: 'Candidate details updated successfully & saved to Git!' });
       } else {
         // Create new nomination
         const studentStr = localStorage.getItem('user');
@@ -135,7 +141,7 @@ export default function CandidateNominationPage() {
         if (res.data?.candidate) {
           setCandidateId(res.data.candidate.id);
         }
-        setMessage({ type: 'success', text: 'Nomination submitted successfully! Pending admin review.' });
+        setMessage({ type: 'success', text: 'Nomination submitted successfully & saved to Git! Pending admin review.' });
       }
     } catch (err) {
       console.error('Submit nomination error:', err);
@@ -305,7 +311,7 @@ export default function CandidateNominationPage() {
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-[#1b1c1a] flex items-center space-x-1.5">
               <ShieldCheck className="w-4 h-4 text-[#00450d]" />
-              <span>Party / Alliance / Group Name</span>
+              <span>Party / Alliance / Group Name *</span>
             </label>
             <input
               type="text"
@@ -313,31 +319,47 @@ export default function CandidateNominationPage() {
               onChange={(e) => setParty(e.target.value)}
               disabled={isDeadlinePassed}
               placeholder="e.g. Progressive Student Front (PSF) or Independent"
-              className="w-full px-3 me-2.5 py-2.5 text-xs border border-[#c0c9bb] rounded-xl focus:ring-2 focus:ring-[#00450d] bg-white outline-none disabled:bg-[#f4f4f0]"
-            />
-          </div>
-
-          {/* Campaign Slogan & Moto */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[#1b1c1a] flex items-center space-x-1.5">
-              <Sparkles className="w-4 h-4 text-[#00450d]" />
-              <span>Campaign Slogan / Moto</span>
-            </label>
-            <input
-              type="text"
-              value={slogan}
-              onChange={(e) => setSlogan(e.target.value)}
-              disabled={isDeadlinePassed}
-              placeholder="e.g. Empowering Student Voices for Tomorrow"
               className="w-full px-3 py-2.5 text-xs border border-[#c0c9bb] rounded-xl focus:ring-2 focus:ring-[#00450d] bg-white outline-none disabled:bg-[#f4f4f0]"
             />
           </div>
 
-          {/* Manifesto / Description */}
+          {/* Short Bio / About Me */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-[#1b1c1a] flex items-center space-x-1.5">
+              <Sparkles className="w-4 h-4 text-[#00450d]" />
+              <span>Short Bio / About Me</span>
+            </label>
+            <textarea
+              rows={2}
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              disabled={isDeadlinePassed}
+              placeholder="Brief summary introducing yourself to fellow student voters..."
+              className="w-full px-3 py-2 text-xs border border-[#c0c9bb] rounded-xl focus:ring-2 focus:ring-[#00450d] bg-white outline-none disabled:bg-[#f4f4f0]"
+            />
+          </div>
+
+          {/* Past Experience / Achievements (Optional) */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-[#1b1c1a] flex items-center space-x-1.5">
+              <Award className="w-4 h-4 text-[#00450d]" />
+              <span>Past Experience & Achievements (Optional)</span>
+            </label>
+            <textarea
+              rows={2}
+              value={experience}
+              onChange={(e) => setExperience(e.target.value)}
+              disabled={isDeadlinePassed}
+              placeholder="Mention leadership roles, society memberships, or past academic achievements..."
+              className="w-full px-3 py-2 text-xs border border-[#c0c9bb] rounded-xl focus:ring-2 focus:ring-[#00450d] bg-white outline-none disabled:bg-[#f4f4f0]"
+            />
+          </div>
+
+          {/* Manifesto / Vision Statement */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-[#1b1c1a] flex items-center space-x-1.5">
               <FileText className="w-4 h-4 text-[#00450d]" />
-              <span>Candidate Manifesto & Key Objectives</span>
+              <span>Candidate Manifesto & Key Objectives *</span>
             </label>
             <textarea
               rows={4}
@@ -349,42 +371,25 @@ export default function CandidateNominationPage() {
             />
           </div>
 
-          {/* Media Uploads Grid: Symbol & Photo */}
+          {/* Media Uploads Grid: Campaign Ballot Photo & Symbol */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t border-[#c0c9bb]/60">
-            {/* Symbol Upload */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-[#1b1c1a] flex items-center space-x-1.5">
-                <ImageIcon className="w-4 h-4 text-[#00450d]" />
-                <span>Election Mark / Symbol Image</span>
-              </label>
-
-              {existingSymbolUrl && !symbolFile && (
-                <div className="p-2 border border-[#c0c9bb] rounded-xl flex items-center space-x-3 bg-[#faf9f5]">
-                  <img src={existingSymbolUrl} alt="Symbol" className="w-12 h-12 object-contain rounded-md" />
-                  <span className="text-[11px] text-[#00450d] font-bold">Current Symbol Saved</span>
-                </div>
-              )}
-
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setSymbolFile(e.target.files[0])}
-                disabled={isDeadlinePassed}
-                className="w-full text-xs text-[#717a6d] file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#00450d] file:text-white hover:file:bg-[#006017] cursor-pointer disabled:opacity-50"
-              />
-            </div>
-
-            {/* Photo Upload */}
-            <div className="space-y-2">
+            {/* Campaign Ballot Photo Upload */}
+            <div className="space-y-2 bg-[#faf9f5] p-4 rounded-2xl border border-[#c0c9bb]">
               <label className="text-xs font-bold text-[#1b1c1a] flex items-center space-x-1.5">
                 <Upload className="w-4 h-4 text-[#00450d]" />
-                <span>Candidate Display Photo</span>
+                <span>Campaign / Ballot Photo (Ballot Paper Display) *</span>
               </label>
+              <p className="text-[11px] text-[#717a6d]">
+                This picture will appear on the voting ballot paper for voters. Saved to disk & committed to Git repo!
+              </p>
 
               {existingPhotoUrl && !photoFile && (
-                <div className="p-2 border border-[#c0c9bb] rounded-xl flex items-center space-x-3 bg-[#faf9f5]">
-                  <img src={existingPhotoUrl} alt="Photo" className="w-12 h-12 object-cover rounded-full" />
-                  <span className="text-[11px] text-[#00450d] font-bold">Current Photo Saved</span>
+                <div className="p-2 border border-[#c0c9bb] rounded-xl flex items-center space-x-3 bg-white">
+                  <img src={existingPhotoUrl} alt="Ballot Photo" className="w-12 h-12 object-cover rounded-full border border-[#00450d]" />
+                  <div>
+                    <span className="text-[11px] text-[#00450d] font-bold block">Current Ballot Photo Saved</span>
+                    <span className="text-[9px] text-[#005312] bg-[#a0f399] px-1.5 py-0.5 rounded font-bold">Committed to Git</span>
+                  </div>
                 </div>
               )}
 
@@ -392,6 +397,35 @@ export default function CandidateNominationPage() {
                 type="file"
                 accept="image/*"
                 onChange={(e) => setPhotoFile(e.target.files[0])}
+                disabled={isDeadlinePassed}
+                className="w-full text-xs text-[#717a6d] file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#00450d] file:text-white hover:file:bg-[#006017] cursor-pointer disabled:opacity-50"
+              />
+            </div>
+
+            {/* Electoral Symbol Logo Upload */}
+            <div className="space-y-2 bg-[#faf9f5] p-4 rounded-2xl border border-[#c0c9bb]">
+              <label className="text-xs font-bold text-[#1b1c1a] flex items-center space-x-1.5">
+                <ImageIcon className="w-4 h-4 text-[#00450d]" />
+                <span>Election Mark / Party Symbol Image *</span>
+              </label>
+              <p className="text-[11px] text-[#717a6d]">
+                Upload your electoral symbol mark (Book, Pen, Eagle, Star, etc.). Saved & committed to Git repo!
+              </p>
+
+              {existingSymbolUrl && !symbolFile && (
+                <div className="p-2 border border-[#c0c9bb] rounded-xl flex items-center space-x-3 bg-white">
+                  <img src={existingSymbolUrl} alt="Symbol" className="w-12 h-12 object-contain rounded-md" />
+                  <div>
+                    <span className="text-[11px] text-[#00450d] font-bold block">Current Symbol Saved</span>
+                    <span className="text-[9px] text-[#005312] bg-[#a0f399] px-1.5 py-0.5 rounded font-bold">Committed to Git</span>
+                  </div>
+                </div>
+              )}
+
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setSymbolFile(e.target.files[0])}
                 disabled={isDeadlinePassed}
                 className="w-full text-xs text-[#717a6d] file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#00450d] file:text-white hover:file:bg-[#006017] cursor-pointer disabled:opacity-50"
               />

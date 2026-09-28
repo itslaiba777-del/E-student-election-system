@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Vote, History, UserCheck, Settings, LogOut, Shield } from 'lucide-react';
+import { LayoutDashboard, Vote, History, UserCheck, Settings, LogOut, Shield, Upload } from 'lucide-react';
 
 export default function StudentSidebar() {
   const pathname = usePathname();
@@ -20,7 +20,7 @@ export default function StudentSidebar() {
   const allNavItems = [
     { name: 'Dashboard', href: '/student/dashboard', icon: LayoutDashboard },
     { name: 'My Profile', href: '/student/profile', icon: UserCheck },
-    { name: 'Candidate Portal', href: '/student/candidate-nomination', icon: Vote, candidateOnly: true },
+    { name: 'Upload / Candidate Details', href: '/student/candidate-nomination', icon: Upload, candidateOnly: true },
     { name: 'Election Results', href: '/student/results', icon: History },
   ];
 
