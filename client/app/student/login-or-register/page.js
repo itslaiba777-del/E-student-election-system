@@ -48,11 +48,11 @@ export default function LoginOrRegisterPage() {
         </div>
 
         {/* Choice Cards Bento Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-[800px]">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-[1050px]">
           {/* Login Card */}
           <button
             onClick={() => router.push('/student/login')}
-            className="group relative bg-[#faf9f5] border border-[#c0c9bb] p-6 rounded-2xl shadow-[0px_4px_12px_rgba(27,94,32,0.05)] hover:shadow-md hover:border-[#00450d] transition-all duration-300 text-left flex flex-col items-start overflow-hidden active:scale-[0.98]"
+            className="group relative bg-white border border-[#c0c9bb] p-6 rounded-2xl shadow-sm hover:shadow-md hover:border-[#00450d] transition-all duration-300 text-left flex flex-col items-start overflow-hidden active:scale-[0.98]"
           >
             <div className="absolute top-0 left-0 w-1.5 h-full bg-[#00450d] opacity-0 group-hover:opacity-100 transition-opacity" />
 
@@ -60,29 +60,24 @@ export default function LoginOrRegisterPage() {
               <LogIn className="w-6 h-6 text-[#00450d]" />
             </div>
 
-            <h2 className="text-xl font-bold text-[#1b1c1a] mb-2">
-              I'm a returning student
+            <h2 className="text-lg font-bold text-[#1b1c1a] mb-2">
+              Log in to Account
             </h2>
 
             <p className="text-xs text-[#41493e] leading-relaxed mb-6">
-              Welcome back. Access your dashboard and view active ballots for your department.
+              Access your student voter or candidate dashboard and active ballots.
             </p>
 
             <div className="mt-auto flex items-center gap-2 text-[#00450d] font-bold text-xs">
               <span>Log in</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </div>
-
-            {/* Decorative Background Pattern */}
-            <div className="absolute -right-4 -bottom-4 opacity-[0.04] group-hover:opacity-[0.08] transition-opacity pointer-events-none">
-              <Fingerprint className="w-32 h-32 text-[#00450d]" />
-            </div>
           </button>
 
-          {/* Register Card */}
+          {/* Voter Register Card */}
           <button
             onClick={() => router.push('/student/register/step-1')}
-            className="group relative bg-[#faf9f5] border border-[#c0c9bb] p-6 rounded-2xl shadow-[0px_4px_12px_rgba(27,94,32,0.05)] hover:shadow-md hover:border-[#1b6d24] transition-all duration-300 text-left flex flex-col items-start overflow-hidden active:scale-[0.98]"
+            className="group relative bg-white border border-[#c0c9bb] p-6 rounded-2xl shadow-sm hover:shadow-md hover:border-[#1b6d24] transition-all duration-300 text-left flex flex-col items-start overflow-hidden active:scale-[0.98]"
           >
             <div className="absolute top-0 left-0 w-1.5 h-full bg-[#1b6d24] opacity-0 group-hover:opacity-100 transition-opacity" />
 
@@ -90,22 +85,44 @@ export default function LoginOrRegisterPage() {
               <UserPlus className="w-6 h-6 text-[#1b6d24]" />
             </div>
 
-            <h2 className="text-xl font-bold text-[#1b1c1a] mb-2">
-              I'm new here
+            <h2 className="text-lg font-bold text-[#1b1c1a] mb-2">
+              Register as Voter
             </h2>
 
             <p className="text-xs text-[#41493e] leading-relaxed mb-6">
-              Verify your student identity to participate in upcoming university-wide elections.
+              Verify your identity, complete face scan, and vote in elections.
             </p>
 
             <div className="mt-auto flex items-center gap-2 text-[#1b6d24] font-bold text-xs">
-              <span>Register</span>
+              <span>Register Voter</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </div>
+          </button>
 
-            {/* Decorative Background Pattern */}
-            <div className="absolute -right-4 -bottom-4 opacity-[0.04] group-hover:opacity-[0.08] transition-opacity pointer-events-none">
-              <ShieldCheck className="w-32 h-32 text-[#1b6d24]" />
+          {/* Candidate Register Card */}
+          <button
+            onClick={() => router.push('/candidate/register/step-1')}
+            className="group relative bg-[#00450d] text-white border border-[#00450d] p-6 rounded-2xl shadow-sm hover:shadow-md hover:bg-[#005312] transition-all duration-300 text-left flex flex-col items-start overflow-hidden active:scale-[0.98]"
+          >
+            <div className="w-12 h-12 rounded-xl bg-[#acf4a4] text-[#002203] flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <Award className="w-6 h-6 text-[#00450d]" />
+            </div>
+
+            <span className="px-2.5 py-0.5 bg-[#acf4a4] text-[#002203] text-[9px] font-extrabold uppercase tracking-wider rounded-full mb-2">
+              Candidate Portal
+            </span>
+
+            <h2 className="text-lg font-bold text-white mb-2">
+              Register as Candidate
+            </h2>
+
+            <p className="text-xs text-[#a0f399] leading-relaxed mb-6">
+              Contest in elections with your party mark, manifesto, slogan & face scan.
+            </p>
+
+            <div className="mt-auto flex items-center gap-2 text-[#acf4a4] font-bold text-xs">
+              <span>Register Candidate</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </div>
           </button>
         </div>
