@@ -10,6 +10,11 @@ const {
   getAllStudents,
   getApprovedCandidates,
 } = require('../controllers/superadminController');
+const {
+  updateStudentDetails,
+  updateStudentPassword,
+  deleteStudent,
+} = require('../controllers/adminController');
 const { verifyToken, requireRole } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
 
@@ -23,7 +28,13 @@ router.get('/admins', getAllAdmins);
 
 router.get('/settings', getSystemSettings);
 router.put('/settings', upload.single('logo'), updateSystemSettings);
+
 router.get('/students', getAllStudents);
+router.put('/students/:id', updateStudentDetails);
+router.put('/students/:id/status', updateStudentDetails);
+router.put('/students/:id/password', updateStudentPassword);
+router.delete('/students/:id', deleteStudent);
+
 router.get('/candidates', getApprovedCandidates);
 
 module.exports = router;

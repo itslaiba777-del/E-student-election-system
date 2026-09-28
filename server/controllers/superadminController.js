@@ -295,11 +295,12 @@ const updateSystemSettings = async (req, res) => {
 const getAllStudents = async (req, res) => {
   try {
     const result = await db.query(
-      `SELECT s.id, s.full_name, s.email, s.cnic, s.registration_number, s.status, s.created_at,
-              u.university_name, d.department_name
+      `SELECT s.id, s.full_name, s.father_name, s.email, s.cnic, s.registration_number, s.mobile_number, s.profile_image_url, s.batch, s.semester, s.user_role, s.status, s.created_at,
+              u.university_name, d.department_name, p.program_name
        FROM students s
        LEFT JOIN universities u ON s.university_id = u.id
        LEFT JOIN departments d ON s.department_id = d.id
+       LEFT JOIN programs p ON s.program_id = p.id
        ORDER BY s.created_at DESC`
     );
     return res.status(200).json({ students: result.rows });

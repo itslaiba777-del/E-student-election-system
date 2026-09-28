@@ -7,6 +7,9 @@ const {
   getDepartments,
   createDepartment,
   deleteDepartment,
+  updateStudentDetails,
+  updateStudentPassword,
+  deleteStudent,
 } = require('../controllers/adminController');
 const { verifyToken, requireRole } = require('../middleware/authMiddleware');
 const requireAdminPermission = require('../middleware/permissionMiddleware');
@@ -18,7 +21,11 @@ router.get('/dashboard', requireAdminPermission(null), getAdminDashboard);
 router.get('/departments', getDepartments);
 router.post('/departments', createDepartment);
 router.delete('/departments/:id', deleteDepartment);
+
 router.get('/students', getStudentsList);
 router.put('/students/:student_id/status', updateStudentStatus);
+router.put('/students/:id', updateStudentDetails);
+router.put('/students/:id/password', updateStudentPassword);
+router.delete('/students/:id', deleteStudent);
 
 module.exports = router;

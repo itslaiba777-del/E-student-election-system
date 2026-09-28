@@ -168,6 +168,130 @@ const deleteDepartment = async (req, res) => {
   }
 };
 
+/**
+ * Update Student / Voter Details
+ */
+const updateStudentDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { full_name, father_name, cnic, registration_number, mobile_number, email, status } = req.body;
+
+    const query = `
+      UPDATE students
+      SET full_name = COALESCE($1, full_name),
+          father_name = COALESCE($2, father_name),
+          cnic = COALESCE($3, cnic),
+          registration_number = COALESCE($4, registration_number),
+          mobile_number = COALESCE($5, mobile_number),
+          email = COALESCE($6, email),
+          status = COALESCE($7, status)
+      WHERE id = $8
+      RETURNING *
+    `;
+
+    const result = await db.query(query, [
+      full_name ? full_name.trim() : null,
+      father_name ? father_name.trim() : null,
+      cnic ? cnic.trim() : null,
+      registration_number ? registration_number.trim() : null,
+      mobile_number ? mobile_number.trim() : null,
+      email ? email.trim().toLowerCase() : null,
+      status || null,
+      id,
+    ]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Voter profile not found.' });
+    }
+
+    return res.status(200).json({
+      message: 'Voter details updated successfully.',
+      student: result.rows[0],
+    });
+  } catch (error) {
+    console.error('Update student details error:', error);
+    return res.status(500).json({ message: 'Server error updating voter profile.' });
+  }
+};
+
+/**
+ * Update Student / Voter Password
+ */
+const updateStudentPassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { password } = req.body;
+
+    if (!password || password.trim().length < 4) {
+      return res.status(400).json({ message: 'Password must be at least 4 characters long.' });
+    }
+
+    const bcrypt = require('bcrypt');
+    const salt = await bcrypt.genSalt(10);
+    const password_hash = await bcrypt.hash(password.trim(), salt);
+
+    const result = await db.query(
+      'UPDATE students SET password_hash = $1 WHERE id = $2 RETURNING id, full_name, email',
+      [password_hash, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Voter account not found.' });
+    }
+
+    return res.status(200).json({
+      message: `Password updated successfully for voter '${result.rows[0].full_name}'.`,
+    });
+  } catch (error) {
+    console.error('Update student password error:', error);
+    return res.status(500).json({ message: 'Server error updating voter password.' });
+  }
+};
+
+/**
+ * Delete Student / Voter & Profile Picture File from Disk
+ */
+const deleteStudent = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 1. Fetch student to get profile picture path
+    const stRes = await db.query('SELECT * FROM students WHERE id = $1', [id]);
+    if (stRes.rows.length === 0) {
+      return res.status(404).json({ message: 'Voter account not found.' });
+    }
+
+    const student = stRes.rows[0];
+
+    // 2. Delete profile picture file from disk if exists
+    if (student.profile_image_url && student.profile_image_url.startsWith('/uploads/')) {
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const filePath = path.join(__dirname, '..', student.profile_image_url);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+          console.log(`✅ Deleted profile picture file from disk/git path: ${filePath}`);
+        }
+      } catch (fileErr) {
+        console.warn('Could not delete image file:', fileErr.message);
+      }
+    }
+
+    // 3. Delete student from DB
+    await db.query('DELETE FROM votes WHERE student_id = $1', [id]).catch(() => {});
+    await db.query('DELETE FROM candidates WHERE student_id = $1', [id]).catch(() => {});
+    await db.query('DELETE FROM students WHERE id = $1', [id]);
+
+    return res.status(200).json({
+      message: `Voter account '${student.full_name}' and profile picture file deleted successfully.`,
+    });
+  } catch (error) {
+    console.error('Delete student error:', error);
+    return res.status(500).json({ message: 'Server error deleting voter account.' });
+  }
+};
+
 module.exports = {
   getAdminDashboard,
   getStudentsList,
@@ -175,4 +299,7 @@ module.exports = {
   getDepartments,
   createDepartment,
   deleteDepartment,
+  updateStudentDetails,
+  updateStudentPassword,
+  deleteStudent,
 };
