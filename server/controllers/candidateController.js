@@ -1,3 +1,4 @@
+const db = require('../config/db');
 const path = require('path');
 const { execSync } = require('child_process');
 
@@ -189,7 +190,7 @@ const updateCandidateStatus = async (req, res) => {
 const updateCandidateDetails = async (req, res) => {
   try {
     const { candidate_id } = req.params;
-    const { party, manifesto, bio, experience } = req.body;
+    const { party, slogan, motto, manifesto, bio, experience } = req.body;
 
     let candResult = await db.query('SELECT * FROM candidates WHERE id = $1', [candidate_id]);
     
@@ -202,9 +203,9 @@ const updateCandidateDetails = async (req, res) => {
           const st = stRes.rows[0];
           // Create nomination row if missing
           const ins = await db.query(
-            `INSERT INTO candidates (name, party, manifesto, bio, experience, faculty_id, department_id, program_id, election_id, status)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, 'pending') RETURNING *`,
-            [st.full_name, party || 'Independent', manifesto || '', bio || '', experience || '', st.faculty_id || 1, st.department_id || 1, st.program_id || null]
+            `INSERT INTO candidates (name, party, slogan, motto, manifesto, bio, experience, faculty_id, department_id, program_id, election_id, status)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 1, 'pending') RETURNING *`,
+            [st.full_name, party || 'Independent', slogan || '', motto || '', manifesto || '', bio || '', experience || '', st.faculty_id || 1, st.department_id || 1, st.program_id || null]
           );
           candResult = ins;
         }
@@ -236,15 +237,20 @@ const updateCandidateDetails = async (req, res) => {
     const updated = await db.query(
       `UPDATE candidates
        SET party = COALESCE($1, party),
-           manifesto = COALESCE($2, manifesto),
-           bio = COALESCE($3, bio),
-           experience = COALESCE($4, experience),
-           photo_url = COALESCE($5, photo_url),
-           symbol_image_url = COALESCE($6, symbol_image_url)
-       WHERE id = $7
+           slogan = COALESCE($2, slogan),
+           motto = COALESCE($3, motto),
+           manifesto = COALESCE($4, manifesto),
+           bio = COALESCE($5, bio),
+           experience = COALESCE($6, experience),
+           photo_url = COALESCE($7, photo_url),
+           symbol_image_url = COALESCE($8, symbol_image_url),
+           status = 'pending'
+       WHERE id = $9
        RETURNING *`,
       [
         party ? party.trim() : null,
+        slogan ? slogan.trim() : null,
+        motto ? motto.trim() : null,
         manifesto ? manifesto.trim() : null,
         bio ? bio.trim() : null,
         experience ? experience.trim() : null,
@@ -255,7 +261,7 @@ const updateCandidateDetails = async (req, res) => {
     );
 
     return res.status(200).json({
-      message: 'Candidate nomination campaign details updated successfully & saved to Git.',
+      message: 'Candidate nomination details uploaded successfully & submitted for Admin Approval!',
       candidate: updated.rows[0],
     });
   } catch (error) {

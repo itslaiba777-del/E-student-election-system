@@ -438,40 +438,95 @@ export default function AdminCandidatesPage() {
             {/* Drawer Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               <div className="flex flex-col items-center text-center space-y-3">
-                <div className="w-24 h-24 rounded-2xl bg-[#a0f399] border-4 border-white shadow-md flex items-center justify-center font-black text-[#00450d] text-2xl">
-                  {selectedCandidate.full_name.charAt(0)}
+                {/* Candidate Ballot Photo */}
+                <div className="relative w-28 h-28 rounded-full border-4 border-[#00450d] shadow-md overflow-hidden bg-[#e9e8e4] flex items-center justify-center">
+                  {selectedCandidate.photo_url ? (
+                    <img
+                      src={selectedCandidate.photo_url.startsWith('http') ? selectedCandidate.photo_url : `http://localhost:5000${selectedCandidate.photo_url}`}
+                      alt={selectedCandidate.full_name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="font-black text-[#00450d] text-2xl">
+                      {selectedCandidate.full_name.charAt(0)}
+                    </span>
+                  )}
                 </div>
+
                 <div>
                   <h4 className="text-xl font-extrabold text-[#1b1c1a]">
                     {selectedCandidate.full_name}
                   </h4>
                   <p className="text-xs text-[#717a6d] font-semibold mt-0.5">
-                    Candidate for {selectedCandidate.position_title}
+                    Candidate for {selectedCandidate.position_title || 'President'}
                   </p>
                 </div>
 
                 <div className="flex items-center space-x-2 pt-1">
                   <span className="px-3 py-1 bg-[#a3f69c] text-[#005312] text-xs font-bold rounded-full">
-                    {selectedCandidate.party_name}
+                    {selectedCandidate.party || selectedCandidate.party_name || 'Independent'}
                   </span>
-                  <span className="px-3 py-1 bg-[#e9e8e4] text-[#41493e] text-xs font-bold rounded-full flex items-center space-x-1">
-                    <Star className="w-3.5 h-3.5 text-[#00450d]" />
-                    <span>Symbol: {selectedCandidate.symbol_name}</span>
-                  </span>
+                  
+                  {selectedCandidate.symbol_image_url && (
+                    <div className="px-3 py-1 bg-white border border-[#c0c9bb] rounded-full flex items-center space-x-1.5 text-xs font-bold text-[#1b1c1a]">
+                      <img
+                        src={selectedCandidate.symbol_image_url.startsWith('http') ? selectedCandidate.symbol_image_url : `http://localhost:5000${selectedCandidate.symbol_image_url}`}
+                        alt="Symbol"
+                        className="w-5 h-5 object-contain"
+                      />
+                      <span>GitHub Committed Symbol</span>
+                    </div>
+                  )}
                 </div>
+
+                {selectedCandidate.slogan && (
+                  <p className="text-xs text-[#00450d] font-bold italic">"{selectedCandidate.slogan}"</p>
+                )}
               </div>
+
+              {/* Motto & Bio */}
+              {(selectedCandidate.motto || selectedCandidate.bio) && (
+                <div className="space-y-3 bg-[#faf9f5] p-4 rounded-xl border border-[#c0c9bb]">
+                  {selectedCandidate.motto && (
+                    <div>
+                      <span className="text-[10px] font-extrabold text-[#717a6d] uppercase block">Party Motto</span>
+                      <p className="text-xs font-bold text-[#1b1c1a]">{selectedCandidate.motto}</p>
+                    </div>
+                  )}
+                  {selectedCandidate.bio && (
+                    <div>
+                      <span className="text-[10px] font-extrabold text-[#717a6d] uppercase block">About Me / Bio</span>
+                      <p className="text-xs text-[#41493e]">{selectedCandidate.bio}</p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Manifesto Section */}
               <section className="space-y-2">
                 <h5 className="text-xs font-bold text-[#00450d] uppercase tracking-wider">
-                  Campaign Manifesto
+                  Candidate Manifesto
                 </h5>
                 <div className="bg-[#f4f4f0] p-4 rounded-xl border border-[#c0c9bb]">
                   <p className="text-xs text-[#41493e] leading-relaxed italic">
-                    "{selectedCandidate.manifesto_summary}"
+                    "{selectedCandidate.manifesto || selectedCandidate.manifesto_summary || 'No manifesto details provided.'}"
                   </p>
                 </div>
               </section>
+
+              {/* Past Experience & Achievements */}
+              {selectedCandidate.experience && (
+                <section className="space-y-2">
+                  <h5 className="text-xs font-bold text-[#00450d] uppercase tracking-wider">
+                    Past Experience & Achievements
+                  </h5>
+                  <div className="bg-[#faf9f5] p-4 rounded-xl border border-[#c0c9bb]">
+                    <p className="text-xs text-[#41493e] leading-relaxed">
+                      {selectedCandidate.experience}
+                    </p>
+                  </div>
+                </section>
+              )}
 
               {/* Documents Section */}
               <section className="space-y-2">

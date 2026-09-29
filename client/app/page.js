@@ -275,7 +275,7 @@ export default function UnifiedAuthHub() {
     triggerSendOtp();
   };
 
-  // 3. Candidate Step 1 Submit -> Check Schedule, CGPA & Semester Criteria
+  // 3. Candidate Registration Form Submit -> Check Schedule, CGPA & Semester Criteria -> Trigger OTP
   const handleCandidateStep1Submit = (e) => {
     e.preventDefault();
     setError('');
@@ -301,14 +301,7 @@ export default function UnifiedAuthHub() {
       return;
     }
 
-    // Eligible candidate -> Move to Step 2 (Party & Symbol details)
-    setCandidateStep(2);
-  };
-
-  // 4. Candidate Step 2 Submit -> Trigger OTP
-  const handleCandidateStep2Submit = async (e) => {
-    e.preventDefault();
-    setError('');
+    // Eligible candidate -> Single Phase: Trigger OTP & Face Scan directly
     setTargetRole('candidate');
     triggerSendOtp();
   };
@@ -793,7 +786,7 @@ export default function UnifiedAuthHub() {
         )}
 
         {/* -------------------------------------------------------------
-            VIEW 4: CANDIDATE REGISTRATION FORM (Step 1 & Step 2)
+            VIEW 4: CANDIDATE REGISTRATION FORM (Single Phase)
         ------------------------------------------------------------- */}
         {viewMode === 'register-candidate' && (
           <div className="p-6 md:p-8">
@@ -801,283 +794,224 @@ export default function UnifiedAuthHub() {
               <div>
                 <h2 className="text-xl font-bold text-[#1B5E20]">Candidate Registration</h2>
                 <p className="text-xs text-[#6B6B60]">
-                  {candidateStep === 1 ? 'Step 1: Academic & Personal Profile' : 'Step 2: Campaign & Symbol Details'}
+                  General Details & Academic Verification Profile
                 </p>
               </div>
               <span className="text-[10px] font-bold bg-[#1B5E20] text-white px-2.5 py-1 rounded-full">
-                Candidate Step {candidateStep}/2
+                Candidate Profile
               </span>
             </div>
 
-            {/* STEP 1: Basic Info + CGPA */}
-            {candidateStep === 1 && (
-              <form onSubmit={handleCandidateStep1Submit} className="space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-[#2C2C2C] mb-1">Full Name</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Jane Candidate"
-                      value={regForm.full_name}
-                      onChange={(e) => setRegForm({ ...regForm, full_name: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs text-[#2C2C2C]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-[#2C2C2C] mb-1">Father Name</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Father Name"
-                      value={regForm.father_name}
-                      onChange={(e) => setRegForm({ ...regForm, father_name: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs text-[#2C2C2C]"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-[#2C2C2C] mb-1">Mobile Number</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="0300-9876543"
-                      value={regForm.mobile_number}
-                      onChange={(e) => setRegForm({ ...regForm, mobile_number: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs text-[#2C2C2C]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-[#2C2C2C] mb-1">Email Address</label>
-                    <input
-                      type="email"
-                      required
-                      placeholder="candidate@university.edu"
-                      value={regForm.email}
-                      onChange={(e) => setRegForm({ ...regForm, email: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs text-[#2C2C2C]"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-[#2C2C2C] mb-1">CNIC Number</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="61101-9999999-1"
-                      value={regForm.cnic}
-                      onChange={(e) => setRegForm({ ...regForm, cnic: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs text-[#2C2C2C]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-[#2C2C2C] mb-1">Registration Number</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="CS-2022-099"
-                      value={regForm.registration_number}
-                      onChange={(e) => setRegForm({ ...regForm, registration_number: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs text-[#2C2C2C]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-[#1B5E20] mb-1 font-bold">
-                      Current CGPA (Min {activeElection.min_cgpa_criteria || 3.0})
-                    </label>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      required
-                      placeholder="e.g. 3.65"
-                      value={regForm.cgpa}
-                      onChange={(e) => setRegForm({ ...regForm, cgpa: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#A5D6A7]/20 border border-[#2E7D32] rounded-xl text-xs font-bold text-[#1B5E20]"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-[#1B5E20] mb-1 flex items-center justify-between">
-                      <span>University</span>
-                      <span className="text-[9px] font-bold text-[#005312] bg-[#E8F5E9] px-1.5 py-0.5 rounded-full">
-                        Auto-filled
-                      </span>
-                    </label>
-                    <input
-                      type="text"
-                      disabled
-                      value={systemUniversityName || 'COMSATS University Islamabad'}
-                      className="w-full px-3 py-2 bg-[#E8F5E9] border-2 border-[#1B5E20] rounded-xl text-xs font-mono font-bold text-[#1B5E20] cursor-not-allowed"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-[#1B5E20] mb-1">
-                      Department <span className="text-[#BA1A1A]">*</span>
-                    </label>
-                    <select
-                      value={regForm.faculty_id}
-                      onChange={handleFacultyChange}
-                      className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs font-semibold text-[#2C2C2C]"
-                    >
-                      <option value="">-- Select Department --</option>
-                      {faculties.map((f) => (
-                        <option key={f.id} value={f.id}>
-                          {formatDepartmentName(f.department_name || f.faculty_name)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-[#1B5E20] mb-1">
-                      Degree / Program <span className="text-[#BA1A1A]">*</span>
-                    </label>
-                    <select
-                      value={regForm.department_id}
-                      disabled={!regForm.faculty_id}
-                      onChange={(e) => setRegForm({ ...regForm, department_id: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs font-semibold text-[#2C2C2C] disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-[#f4f4f0]"
-                    >
-                      <option value="">
-                        {!regForm.faculty_id
-                          ? '-- Select Department First --'
-                          : departments.length > 0
-                          ? '-- Select Degree / Program --'
-                          : '-- No Programs Available for this Department --'}
-                      </option>
-                      {departments.map((d) => (
-                        <option key={d.id} value={d.id}>{d.program_name || d.department_name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-[#2C2C2C] mb-1">Batch</label>
-                    <input
-                      type="text"
-                      placeholder="2022-2026"
-                      value={regForm.batch}
-                      onChange={(e) => setRegForm({ ...regForm, batch: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs text-[#2C2C2C]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-[#2C2C2C] mb-1">Semester</label>
-                    <input
-                      type="text"
-                      placeholder="6th"
-                      value={regForm.semester}
-                      onChange={(e) => setRegForm({ ...regForm, semester: e.target.value })}
-                      className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs text-[#2C2C2C]"
-                    />
-                  </div>
-                </div>
-
+            <form onSubmit={handleCandidateStep1Submit} className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-semibold text-[#2C2C2C] mb-1">Password</label>
-                  <div className="relative">
-                    <input
-                      type={showRegPassword ? 'text' : 'password'}
-                      required
-                      placeholder="Set password"
-                      value={regForm.password}
-                      onChange={(e) => setRegForm({ ...regForm, password: e.target.value })}
-                      className="w-full pl-3 pr-10 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs text-[#2C2C2C]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowRegPassword(!showRegPassword)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#6B6B60] hover:text-[#1B5E20] focus:outline-none cursor-pointer"
-                    >
-                      {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-3">
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('select-role')}
-                    className="text-xs text-[#6B6B60] underline"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-6 py-2.5 bg-[#1B5E20] hover:bg-[#2E7D32] text-white font-semibold text-xs rounded-xl shadow transition-all flex items-center space-x-1"
-                  >
-                    <span>Validate CGPA & Next Step</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {/* STEP 2: Party, Symbol & Manifesto Details */}
-            {candidateStep === 2 && (
-              <form onSubmit={handleCandidateStep2Submit} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-[#2C2C2C] mb-1">Party / Student Alliance Name</label>
+                  <label className="block text-[11px] font-semibold text-[#2C2C2C] mb-1">Full Name</label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Progressive Student Front"
-                    value={regForm.party_name}
-                    onChange={(e) => setRegForm({ ...regForm, party_name: e.target.value })}
+                    placeholder="Jane Candidate"
+                    value={regForm.full_name}
+                    onChange={(e) => setRegForm({ ...regForm, full_name: e.target.value })}
                     className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs text-[#2C2C2C]"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-xs font-semibold text-[#2C2C2C] mb-1">Election Symbol Image URL</label>
+                  <label className="block text-[11px] font-semibold text-[#2C2C2C] mb-1">Father Name</label>
                   <input
-                    type="url"
+                    type="text"
                     required
-                    placeholder="https://example.com/symbol.png"
-                    value={regForm.symbol_url}
-                    onChange={(e) => setRegForm({ ...regForm, symbol_url: e.target.value })}
+                    placeholder="Father Name"
+                    value={regForm.father_name}
+                    onChange={(e) => setRegForm({ ...regForm, father_name: e.target.value })}
                     className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs text-[#2C2C2C]"
                   />
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[#2C2C2C] mb-1">Manifesto / Vision Statement</label>
-                  <textarea
-                    rows="4"
+                  <label className="block text-[11px] font-semibold text-[#2C2C2C] mb-1">Mobile Number</label>
+                  <input
+                    type="text"
                     required
-                    placeholder="Describe key goals and promises for university elections..."
-                    value={regForm.manifesto}
-                    onChange={(e) => setRegForm({ ...regForm, manifesto: e.target.value })}
+                    placeholder="0300-9876543"
+                    value={regForm.mobile_number}
+                    onChange={(e) => setRegForm({ ...regForm, mobile_number: e.target.value })}
                     className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs text-[#2C2C2C]"
-                  ></textarea>
+                  />
                 </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#2C2C2C] mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="candidate@university.edu"
+                    value={regForm.email}
+                    onChange={(e) => setRegForm({ ...regForm, email: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs text-[#2C2C2C]"
+                  />
+                </div>
+              </div>
 
-                <div className="flex items-center justify-between pt-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#2C2C2C] mb-1">CNIC Number</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="61101-9999999-1"
+                    value={regForm.cnic}
+                    onChange={(e) => setRegForm({ ...regForm, cnic: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs text-[#2C2C2C]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#2C2C2C] mb-1">Registration Number</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="CS-2022-099"
+                    value={regForm.registration_number}
+                    onChange={(e) => setRegForm({ ...regForm, registration_number: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs text-[#2C2C2C]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#1B5E20] mb-1 font-bold">
+                    Current CGPA (Min {activeElection.min_cgpa_criteria || 3.0})
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    required
+                    placeholder="e.g. 3.65"
+                    value={regForm.cgpa}
+                    onChange={(e) => setRegForm({ ...regForm, cgpa: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#A5D6A7]/20 border border-[#2E7D32] rounded-xl text-xs font-bold text-[#1B5E20]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-[#1B5E20] mb-1 flex items-center justify-between">
+                    <span>University</span>
+                    <span className="text-[9px] font-bold text-[#005312] bg-[#E8F5E9] px-1.5 py-0.5 rounded-full">
+                      Auto-filled
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    disabled
+                    value={systemUniversityName || 'COMSATS University Islamabad'}
+                    className="w-full px-3 py-2 bg-[#E8F5E9] border-2 border-[#1B5E20] rounded-xl text-xs font-mono font-bold text-[#1B5E20] cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#1B5E20] mb-1">
+                    Department <span className="text-[#BA1A1A]">*</span>
+                  </label>
+                  <select
+                    value={regForm.faculty_id}
+                    onChange={handleFacultyChange}
+                    className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs font-semibold text-[#2C2C2C]"
+                  >
+                    <option value="">-- Select Department --</option>
+                    {faculties.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {formatDepartmentName(f.department_name || f.faculty_name)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-[#1B5E20] mb-1">
+                    Degree / Program <span className="text-[#BA1A1A]">*</span>
+                  </label>
+                  <select
+                    value={regForm.department_id}
+                    disabled={!regForm.faculty_id}
+                    onChange={(e) => setRegForm({ ...regForm, department_id: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs font-semibold text-[#2C2C2C] disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-[#f4f4f0]"
+                  >
+                    <option value="">
+                      {!regForm.faculty_id
+                        ? '-- Select Department First --'
+                        : departments.length > 0
+                        ? '-- Select Degree / Program --'
+                        : '-- No Programs Available for this Department --'}
+                    </option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>{d.program_name || d.department_name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#2C2C2C] mb-1">Batch</label>
+                  <input
+                    type="text"
+                    placeholder="2022-2026"
+                    value={regForm.batch}
+                    onChange={(e) => setRegForm({ ...regForm, batch: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs text-[#2C2C2C]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#2C2C2C] mb-1">Semester</label>
+                  <input
+                    type="text"
+                    placeholder="6th"
+                    value={regForm.semester}
+                    onChange={(e) => setRegForm({ ...regForm, semester: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs text-[#2C2C2C]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-[#2C2C2C] mb-1">Password</label>
+                <div className="relative">
+                  <input
+                    type={showRegPassword ? 'text' : 'password'}
+                    required
+                    placeholder="Set password"
+                    value={regForm.password}
+                    onChange={(e) => setRegForm({ ...regForm, password: e.target.value })}
+                    className="w-full pl-3 pr-10 py-2 bg-[#FBFAF6] border border-[#E4E1D5] rounded-xl text-xs text-[#2C2C2C]"
+                  />
                   <button
                     type="button"
-                    onClick={() => setCandidateStep(1)}
-                    className="text-xs text-[#6B6B60] underline"
+                    onClick={() => setShowRegPassword(!showRegPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#6B6B60] hover:text-[#1B5E20] focus:outline-none cursor-pointer"
                   >
-                    Back to Step 1
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="px-6 py-2.5 bg-[#2E7D32] hover:bg-[#1B5E20] text-white font-semibold text-xs rounded-xl shadow transition-all flex items-center space-x-1"
-                  >
-                    <span>Submit & Request OTP</span>
-                    <ArrowRight className="w-4 h-4" />
+                    {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-              </form>
-            )}
+              </div>
+
+              <div className="flex items-center justify-between pt-3">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('select-role')}
+                  className="text-xs text-[#6B6B60] underline"
+                >
+                  Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-6 py-2.5 bg-[#1B5E20] hover:bg-[#2E7D32] text-white font-semibold text-xs rounded-xl shadow transition-all flex items-center space-x-1"
+                >
+                  <span>Submit & Request OTP</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
           </div>
         )}
 

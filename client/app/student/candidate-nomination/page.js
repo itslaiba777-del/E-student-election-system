@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import StudentSidebar from '../../../components/StudentSidebar';
-import { candidateAPI, electionAPI, academicAPI } from '../../../lib/api';
+import { candidateAPI, electionAPI } from '../../../lib/api';
 import {
   Sparkles,
   ShieldCheck,
@@ -14,7 +14,9 @@ import {
   Image as ImageIcon,
   Flag,
   FileText,
-  Save,
+  Award,
+  UserCheck,
+  Send,
 } from 'lucide-react';
 
 export default function CandidateNominationPage() {
@@ -26,16 +28,20 @@ export default function CandidateNominationPage() {
 
   const [candidateId, setCandidateId] = useState(null);
   const [party, setParty] = useState('');
-  const [manifesto, setManifesto] = useState('');
-  const [bio, setBio] = useState('');
-  const [experience, setExperience] = useState('');
   const [slogan, setSlogan] = useState('');
+  const [motto, setMotto] = useState('');
+  const [bio, setBio] = useState('');
+  const [manifesto, setManifesto] = useState('');
+  const [experience, setExperience] = useState('');
+
   const [symbolFile, setSymbolFile] = useState(null);
   const [photoFile, setPhotoFile] = useState(null);
 
   const [existingSymbolUrl, setExistingSymbolUrl] = useState(null);
   const [existingPhotoUrl, setExistingPhotoUrl] = useState(null);
 
+  const [status, setStatus] = useState('pending');
+  const [isLocked, setIsLocked] = useState(false);
   const [isDeadlinePassed, setIsDeadlinePassed] = useState(false);
   const [applyEndDeadline, setApplyEndDeadline] = useState(null);
 
@@ -60,18 +66,26 @@ export default function CandidateNominationPage() {
         }
       }
 
-      // Check existing nomination
+      // Check existing nomination details
       const myRes = await candidateAPI.getMyNomination();
       if (myRes.data?.candidate) {
         const cand = myRes.data.candidate;
         setCandidateId(cand.id);
         setParty(cand.party || '');
-        setManifesto(cand.manifesto || '');
+        setSlogan(cand.slogan || '');
+        setMotto(cand.motto || '');
         setBio(cand.bio || '');
+        setManifesto(cand.manifesto || '');
         setExperience(cand.experience || '');
+        setStatus(cand.status || 'pending');
         setExistingSymbolUrl(cand.symbol_image_url);
         setExistingPhotoUrl(cand.photo_url);
         setIsDeadlinePassed(myRes.data.is_deadline_passed);
+
+        if (cand.status === 'pending' || cand.status === 'approved') {
+          setIsLocked(true);
+        }
+
         if (cand.candidate_apply_end) {
           setApplyEndDeadline(new Date(cand.candidate_apply_end));
         }
@@ -100,13 +114,13 @@ export default function CandidateNominationPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isDeadlinePassed) {
-      alert('Deadline has passed! Nomination editing is closed.');
+    if (isDeadlinePassed || isLocked) {
+      alert('Candidate details are locked pending Admin approval or deadline expiry.');
       return;
     }
 
     if (!termsAgreed && !candidateId) {
-      alert('⚠️ You must read and check the Election Rules & Terms & Conditions agreement checkbox before submitting your nomination!');
+      alert('⚠️ Please check the Election Rules & Terms agreement checkbox before uploading information!');
       return;
     }
 
@@ -116,18 +130,17 @@ export default function CandidateNominationPage() {
     try {
       const formData = new FormData();
       formData.append('party', party);
-      formData.append('manifesto', manifesto);
+      formData.append('slogan', slogan);
+      formData.append('motto', motto);
       formData.append('bio', bio);
+      formData.append('manifesto', manifesto);
       formData.append('experience', experience);
       if (photoFile) formData.append('photo', photoFile);
       if (symbolFile) formData.append('symbol', symbolFile);
 
       if (candidateId) {
-        // Update existing nomination details
-        const res = await candidateAPI.updateDetails(candidateId, formData);
-        setMessage({ type: 'success', text: 'Candidate details updated successfully & saved to Git!' });
+        await candidateAPI.updateDetails(candidateId, formData);
       } else {
-        // Create new nomination
         const studentStr = localStorage.getItem('user');
         const student = studentStr ? JSON.parse(studentStr) : {};
 
@@ -141,11 +154,24 @@ export default function CandidateNominationPage() {
         if (res.data?.candidate) {
           setCandidateId(res.data.candidate.id);
         }
-        setMessage({ type: 'success', text: 'Nomination submitted successfully & saved to Git! Pending admin review.' });
+      }
+
+      setStatus('pending');
+      setIsLocked(true);
+      setMessage({
+        type: 'success',
+        text: 'Candidate information uploaded successfully! Submitted for Admin Approval.',
+      });
+
+      // Refresh nomination data to get newly committed URLs
+      const updatedRes = await candidateAPI.getMyNomination();
+      if (updatedRes.data?.candidate) {
+        setExistingSymbolUrl(updatedRes.data.candidate.symbol_image_url);
+        setExistingPhotoUrl(updatedRes.data.candidate.photo_url);
       }
     } catch (err) {
       console.error('Submit nomination error:', err);
-      const errMsg = err.response?.data?.message || 'Error saving candidate details.';
+      const errMsg = err.response?.data?.message || 'Error saving candidate information.';
       setMessage({ type: 'error', text: errMsg });
     } finally {
       setSubmitting(false);
@@ -163,59 +189,58 @@ export default function CandidateNominationPage() {
             <div className="flex items-center space-x-2">
               <span className="px-2.5 py-0.5 bg-[#00450d] text-white text-[10px] font-extrabold rounded-full uppercase tracking-wider flex items-center space-x-1">
                 <Sparkles className="w-3 h-3 text-[#acf4a4]" />
-                <span>Candidate Portal</span>
+                <span>Upload Candidate Details</span>
               </span>
 
-              {isDeadlinePassed ? (
-                <span className="px-2.5 py-0.5 bg-[#ba1a1a] text-white text-[10px] font-extrabold rounded-full uppercase tracking-wider flex items-center space-x-1">
-                  <Lock className="w-3 h-3" />
-                  <span>Editing Closed</span>
+              {status === 'approved' ? (
+                <span className="px-2.5 py-0.5 bg-[#a0f399] text-[#005312] text-[10px] font-extrabold rounded-full uppercase tracking-wider flex items-center space-x-1">
+                  <UserCheck className="w-3 h-3" />
+                  <span>Approved Candidate</span>
+                </span>
+              ) : status === 'pending' && isLocked ? (
+                <span className="px-2.5 py-0.5 bg-[#ffdcc8] text-[#341100] text-[10px] font-extrabold rounded-full uppercase tracking-wider flex items-center space-x-1">
+                  <Clock className="w-3 h-3" />
+                  <span>Waiting for Approval</span>
                 </span>
               ) : (
-                <span className="px-2.5 py-0.5 bg-[#a0f399] text-[#005312] text-[10px] font-extrabold rounded-full uppercase tracking-wider flex items-center space-x-1">
-                  <Clock className="w-3 h-3" />
-                  <span>Editing Open</span>
+                <span className="px-2.5 py-0.5 bg-[#e9e8e4] text-[#1b1c1a] text-[10px] font-extrabold rounded-full uppercase tracking-wider flex items-center space-x-1">
+                  <FileText className="w-3 h-3" />
+                  <span>Draft Profile</span>
                 </span>
               )}
             </div>
 
             <h1 className="text-2xl md:text-3xl font-extrabold text-[#1b1c1a] mt-2">
-              Candidate Nomination & Profile Details
+              Upload Candidate Details
             </h1>
             <p className="text-xs text-[#717a6d]">
-              Manage your election mark / symbol, slogan, party name, and candidate manifesto.
+              Enter Party Name, Slogan, Party Motto, Short Bio, Manifesto, Past Experience, Symbol Image & Campaign Ballot Photo.
             </p>
           </div>
         </div>
 
-        {/* Deadline Alert Banner */}
-        <div
-          className={`p-5 rounded-2xl border flex items-center justify-between gap-4 ${
-            isDeadlinePassed
-              ? 'bg-[#ffdad6] border-[#ffb4ab] text-[#410002]'
-              : 'bg-[#e8f5e9] border-[#a0f399] text-[#005312]'
-          }`}
-        >
-          <div className="flex items-center space-x-3">
-            {isDeadlinePassed ? (
-              <Lock className="w-6 h-6 shrink-0 text-[#ba1a1a]" />
-            ) : (
-              <Clock className="w-6 h-6 shrink-0 text-[#005312]" />
-            )}
+        {/* Status Banner */}
+        {status === 'approved' ? (
+          <div className="p-5 rounded-2xl bg-[#e8f5e9] border-2 border-[#a0f399] text-[#005312] flex items-center space-x-3 shadow-xs">
+            <CheckCircle2 className="w-6 h-6 text-[#005312] shrink-0" />
             <div>
-              <h3 className="text-xs font-bold uppercase tracking-wider">
-                {isDeadlinePassed ? 'Nomination Deadline Ended' : 'Nomination Deadline Active'}
-              </h3>
-              <p className="text-xs mt-0.5">
-                {isDeadlinePassed
-                  ? 'Editing is disabled because the application deadline has passed.'
-                  : applyEndDeadline
-                  ? `You can edit your details until: ${applyEndDeadline.toLocaleString()}`
-                  : 'You can update your candidate profile before election nominations close.'}
+              <h3 className="text-xs font-black uppercase tracking-wider">Approved Candidate</h3>
+              <p className="text-xs mt-0.5 font-medium">
+                Approved candidate status confirmed! Your election symbol & campaign ballot photo are active across SuperAdmin, Admin, and Voter lists via GitHub.
               </p>
             </div>
           </div>
-        </div>
+        ) : status === 'pending' && isLocked ? (
+          <div className="p-5 rounded-2xl bg-[#fff8f1] border-2 border-[#ffdcc8] text-[#341100] flex items-center space-x-3 shadow-xs">
+            <Clock className="w-6 h-6 text-[#d97706] shrink-0" />
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-wider">Waiting for Approval</h3>
+              <p className="text-xs mt-0.5 font-medium">
+                Candidate information uploaded! Profile is locked pending Admin review. If approved, you will be an Approved Candidate; if rejected, your profile remains as a normal Voter.
+              </p>
+            </div>
+          </div>
+        ) : null}
 
         {message && (
           <div
@@ -230,9 +255,9 @@ export default function CandidateNominationPage() {
           </div>
         )}
 
-        {/* Nomination Form Card */}
+        {/* Upload Candidate Details Form */}
         <form onSubmit={handleSubmit} className="bg-white border border-[#c0c9bb] rounded-2xl p-6 shadow-sm space-y-6">
-          {/* Election Select */}
+          {/* Target Election Select */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-[#1b1c1a] flex items-center space-x-1.5">
               <Flag className="w-4 h-4 text-[#00450d]" />
@@ -241,8 +266,8 @@ export default function CandidateNominationPage() {
             <select
               value={selectedElectionId}
               onChange={handleElectionChange}
-              disabled={isDeadlinePassed || candidateId !== null}
-              className="w-full px-3 py-2.5 text-xs border border-[#c0c9bb] rounded-xl focus:ring-2 focus:ring-[#00450d] bg-white outline-none disabled:bg-[#f4f4f0]"
+              disabled={isLocked || isDeadlinePassed}
+              className="w-full px-3 py-2.5 text-xs border border-[#c0c9bb] rounded-xl focus:ring-2 focus:ring-[#00450d] bg-white outline-none disabled:bg-[#f4f4f0] disabled:cursor-not-allowed"
             >
               {elections.map((el) => (
                 <option key={el.id} value={el.id}>
@@ -252,246 +277,228 @@ export default function CandidateNominationPage() {
             </select>
           </div>
 
-          {/* ELECTION POST, SEATS & TERMS AND CONDITIONS DISPLAY CARD */}
+          {/* Election Post Details Card */}
           {selectedElection && (
-            <div className="p-5 bg-[#e8f5e9] border-2 border-[#a0f399] rounded-2xl space-y-4 shadow-xs">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-[#a0f399] pb-3 gap-2">
+            <div className="p-4 bg-[#e8f5e9] border border-[#a0f399] rounded-2xl space-y-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-[#a0f399] pb-2">
                 <div>
-                  <span className="text-[10px] font-extrabold text-[#005312] uppercase tracking-wider block">
-                    Target Election & Post Details
-                  </span>
-                  <h3 className="text-sm font-black text-[#00450d]">{selectedElection.title}</h3>
+                  <span className="text-[10px] font-extrabold text-[#005312] uppercase tracking-wider block">Target Election Post</span>
+                  <h3 className="text-xs font-black text-[#00450d]">{selectedElection.title}</h3>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <span className="px-3 py-1 bg-[#00450d] text-white text-xs font-black rounded-lg">
+                  <span className="px-2.5 py-1 bg-[#00450d] text-white text-[11px] font-bold rounded-lg">
                     🏆 Seat: {selectedElection.position_title || 'President'}
                   </span>
-                  <span className="px-3 py-1 bg-white border border-[#00450d] text-[#00450d] text-xs font-extrabold rounded-lg">
-                    🪑 Total Seats: {selectedElection.total_seats || 20} Seats
+                  <span className="px-2.5 py-1 bg-white border border-[#00450d] text-[#00450d] text-[11px] font-extrabold rounded-lg">
+                    🪑 {selectedElection.total_seats || 20} Seats
                   </span>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
-                <div className="p-3 bg-white border border-[#a0f399] rounded-xl flex items-center space-x-2.5">
-                  <Award className="w-4 h-4 text-[#005312] shrink-0" />
-                  <div>
-                    <span className="text-[10px] font-bold text-[#717a6d] uppercase block">Academic Criteria</span>
-                    <span className="font-extrabold text-[#005312]">
-                      Min Semester: {selectedElection.min_semester || 3}rd | Min CGPA: {selectedElection.min_cgpa_criteria || 3.0}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-white border border-[#a0f399] rounded-xl flex items-center space-x-2.5">
-                  <Clock className="w-4 h-4 text-[#005312] shrink-0" />
-                  <div>
-                    <span className="text-[10px] font-bold text-[#717a6d] uppercase block">Nomination Deadline</span>
-                    <span className="font-extrabold text-[#005312]">
-                      {selectedElection.candidate_apply_end ? new Date(selectedElection.candidate_apply_end).toLocaleString() : 'N/A'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Terms and Conditions Box */}
-              <div className="p-4 bg-white border border-[#a0f399] rounded-xl space-y-1.5">
-                <h4 className="text-xs font-black text-[#005312] flex items-center space-x-1.5">
-                  <FileText className="w-4 h-4 text-[#005312]" />
-                  <span>📜 Election Rules & Terms & Conditions</span>
-                </h4>
-                <p className="text-xs text-[#41493e] leading-relaxed whitespace-pre-line font-medium">
-                  {selectedElection.terms_and_conditions || 'Candidates must be active enrolled students with clean academic standing and no disciplinary violations.'}
-                </p>
               </div>
             </div>
           )}
 
-          {/* Party Name */}
+          {/* 1. Party / Alliance Name */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-[#1b1c1a] flex items-center space-x-1.5">
               <ShieldCheck className="w-4 h-4 text-[#00450d]" />
-              <span>Party / Alliance / Group Name *</span>
+              <span>Party Name *</span>
             </label>
             <input
               type="text"
+              required
               value={party}
               onChange={(e) => setParty(e.target.value)}
-              disabled={isDeadlinePassed}
-              placeholder="e.g. Progressive Student Front (PSF) or Independent"
-              className="w-full px-3 py-2.5 text-xs border border-[#c0c9bb] rounded-xl focus:ring-2 focus:ring-[#00450d] bg-white outline-none disabled:bg-[#f4f4f0]"
+              disabled={isLocked || isDeadlinePassed}
+              placeholder="Enter Party / Alliance Name..."
+              className="w-full px-3 py-2.5 text-xs border border-[#c0c9bb] rounded-xl focus:ring-2 focus:ring-[#00450d] bg-white outline-none disabled:bg-[#f4f4f0] disabled:cursor-not-allowed font-medium"
             />
           </div>
 
-          {/* Short Bio / About Me */}
+          {/* 2. Slogan */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-[#1b1c1a] flex items-center space-x-1.5">
               <Sparkles className="w-4 h-4 text-[#00450d]" />
-              <span>Short Bio / About Me</span>
+              <span>Slogan *</span>
             </label>
-            <textarea
-              rows={2}
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              disabled={isDeadlinePassed}
-              placeholder="Brief summary introducing yourself to fellow student voters..."
-              className="w-full px-3 py-2 text-xs border border-[#c0c9bb] rounded-xl focus:ring-2 focus:ring-[#00450d] bg-white outline-none disabled:bg-[#f4f4f0]"
+            <input
+              type="text"
+              required
+              value={slogan}
+              onChange={(e) => setSlogan(e.target.value)}
+              disabled={isLocked || isDeadlinePassed}
+              placeholder="Enter Party Slogan..."
+              className="w-full px-3 py-2.5 text-xs border border-[#c0c9bb] rounded-xl focus:ring-2 focus:ring-[#00450d] bg-white outline-none disabled:bg-[#f4f4f0] disabled:cursor-not-allowed font-medium"
             />
           </div>
 
-          {/* Past Experience / Achievements (Optional) */}
+          {/* 3. Party Motto */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-[#1b1c1a] flex items-center space-x-1.5">
+              <Flag className="w-4 h-4 text-[#00450d]" />
+              <span>Party Motto *</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={motto}
+              onChange={(e) => setMotto(e.target.value)}
+              disabled={isLocked || isDeadlinePassed}
+              placeholder="Enter Party Motto..."
+              className="w-full px-3 py-2.5 text-xs border border-[#c0c9bb] rounded-xl focus:ring-2 focus:ring-[#00450d] bg-white outline-none disabled:bg-[#f4f4f0] disabled:cursor-not-allowed font-medium"
+            />
+          </div>
+
+          {/* 4. Short Bio / About Me */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-[#1b1c1a] flex items-center space-x-1.5">
+              <FileText className="w-4 h-4 text-[#00450d]" />
+              <span>Short Bio / About Me *</span>
+            </label>
+            <textarea
+              rows={3}
+              required
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              disabled={isLocked || isDeadlinePassed}
+              placeholder="Write about yourself..."
+              className="w-full px-3 py-2.5 text-xs border border-[#c0c9bb] rounded-xl focus:ring-2 focus:ring-[#00450d] bg-white outline-none disabled:bg-[#f4f4f0] disabled:cursor-not-allowed font-medium"
+            />
+          </div>
+
+          {/* 5. Manifesto */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-[#1b1c1a] flex items-center space-x-1.5">
+              <FileText className="w-4 h-4 text-[#00450d]" />
+              <span>Manifesto *</span>
+            </label>
+            <textarea
+              rows={4}
+              required
+              value={manifesto}
+              onChange={(e) => setManifesto(e.target.value)}
+              disabled={isLocked || isDeadlinePassed}
+              placeholder="Write candidate manifesto..."
+              className="w-full px-3 py-2.5 text-xs border border-[#c0c9bb] rounded-xl focus:ring-2 focus:ring-[#00450d] bg-white outline-none disabled:bg-[#f4f4f0] disabled:cursor-not-allowed font-medium"
+            />
+          </div>
+
+          {/* 6. Past Experience / Achievements (Optional) */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-[#1b1c1a] flex items-center space-x-1.5">
               <Award className="w-4 h-4 text-[#00450d]" />
-              <span>Past Experience & Achievements (Optional)</span>
+              <span>Pichla Experience ya Achievements (Optional)</span>
             </label>
             <textarea
               rows={2}
               value={experience}
               onChange={(e) => setExperience(e.target.value)}
-              disabled={isDeadlinePassed}
-              placeholder="Mention leadership roles, society memberships, or past academic achievements..."
-              className="w-full px-3 py-2 text-xs border border-[#c0c9bb] rounded-xl focus:ring-2 focus:ring-[#00450d] bg-white outline-none disabled:bg-[#f4f4f0]"
+              disabled={isLocked || isDeadlinePassed}
+              placeholder="Leadership roles, society memberships, or past achievements..."
+              className="w-full px-3 py-2.5 text-xs border border-[#c0c9bb] rounded-xl focus:ring-2 focus:ring-[#00450d] bg-white outline-none disabled:bg-[#f4f4f0] disabled:cursor-not-allowed font-medium"
             />
           </div>
 
-          {/* Manifesto / Vision Statement */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[#1b1c1a] flex items-center space-x-1.5">
-              <FileText className="w-4 h-4 text-[#00450d]" />
-              <span>Candidate Manifesto & Key Objectives *</span>
-            </label>
-            <textarea
-              rows={4}
-              value={manifesto}
-              onChange={(e) => setManifesto(e.target.value)}
-              disabled={isDeadlinePassed}
-              placeholder="Detail your goals for campus development, student representation, and academic welfare..."
-              className="w-full px-3 py-2.5 text-xs border border-[#c0c9bb] rounded-xl focus:ring-2 focus:ring-[#00450d] bg-white outline-none disabled:bg-[#f4f4f0]"
-            />
-          </div>
-
-          {/* Media Uploads Grid: Campaign Ballot Photo & Symbol */}
+          {/* 7 & 8. Image Uploads: Party Symbol Image & Campaign Ballot Photo */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t border-[#c0c9bb]/60">
-            {/* Campaign Ballot Photo Upload */}
-            <div className="space-y-2 bg-[#faf9f5] p-4 rounded-2xl border border-[#c0c9bb]">
-              <label className="text-xs font-bold text-[#1b1c1a] flex items-center space-x-1.5">
-                <Upload className="w-4 h-4 text-[#00450d]" />
-                <span>Campaign / Ballot Photo (Ballot Paper Display) *</span>
-              </label>
-              <p className="text-[11px] text-[#717a6d]">
-                This picture will appear on the voting ballot paper for voters. Saved to disk & committed to Git repo!
-              </p>
-
-              {existingPhotoUrl && !photoFile && (
-                <div className="p-2 border border-[#c0c9bb] rounded-xl flex items-center space-x-3 bg-white">
-                  <img src={existingPhotoUrl} alt="Ballot Photo" className="w-12 h-12 object-cover rounded-full border border-[#00450d]" />
-                  <div>
-                    <span className="text-[11px] text-[#00450d] font-bold block">Current Ballot Photo Saved</span>
-                    <span className="text-[9px] text-[#005312] bg-[#a0f399] px-1.5 py-0.5 rounded font-bold">Committed to Git</span>
-                  </div>
-                </div>
-              )}
-
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setPhotoFile(e.target.files[0])}
-                disabled={isDeadlinePassed}
-                className="w-full text-xs text-[#717a6d] file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#00450d] file:text-white hover:file:bg-[#006017] cursor-pointer disabled:opacity-50"
-              />
-            </div>
-
-            {/* Electoral Symbol Logo Upload */}
+            {/* Party Symbol Image */}
             <div className="space-y-2 bg-[#faf9f5] p-4 rounded-2xl border border-[#c0c9bb]">
               <label className="text-xs font-bold text-[#1b1c1a] flex items-center space-x-1.5">
                 <ImageIcon className="w-4 h-4 text-[#00450d]" />
-                <span>Election Mark / Party Symbol Image *</span>
+                <span>Party Symbol Image (GitHub Commit) *</span>
               </label>
               <p className="text-[11px] text-[#717a6d]">
-                Upload your electoral symbol mark (Book, Pen, Eagle, Star, etc.). Saved & committed to Git repo!
+                Upload your party symbol image. Will be committed to GitHub and shown everywhere via GitHub link.
               </p>
 
               {existingSymbolUrl && !symbolFile && (
                 <div className="p-2 border border-[#c0c9bb] rounded-xl flex items-center space-x-3 bg-white">
-                  <img src={existingSymbolUrl} alt="Symbol" className="w-12 h-12 object-contain rounded-md" />
+                  <img src={existingSymbolUrl.startsWith('http') ? existingSymbolUrl : `http://localhost:5000${existingSymbolUrl}`} alt="Symbol" className="w-12 h-12 object-contain rounded-md" />
                   <div>
-                    <span className="text-[11px] text-[#00450d] font-bold block">Current Symbol Saved</span>
-                    <span className="text-[9px] text-[#005312] bg-[#a0f399] px-1.5 py-0.5 rounded font-bold">Committed to Git</span>
+                    <span className="text-[11px] text-[#00450d] font-bold block">Party Symbol Saved</span>
+                    <span className="text-[9px] text-[#005312] bg-[#a0f399] px-1.5 py-0.5 rounded font-bold">Committed to GitHub</span>
                   </div>
                 </div>
               )}
 
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setSymbolFile(e.target.files[0])}
-                disabled={isDeadlinePassed}
-                className="w-full text-xs text-[#717a6d] file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#00450d] file:text-white hover:file:bg-[#006017] cursor-pointer disabled:opacity-50"
-              />
+              {!isLocked && !isDeadlinePassed && (
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setSymbolFile(e.target.files[0])}
+                  className="w-full text-xs text-[#717a6d] file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#00450d] file:text-white hover:file:bg-[#006017] cursor-pointer"
+                />
+              )}
+            </div>
+
+            {/* Campaign Ballot Photo */}
+            <div className="space-y-2 bg-[#faf9f5] p-4 rounded-2xl border border-[#c0c9bb]">
+              <label className="text-xs font-bold text-[#1b1c1a] flex items-center space-x-1.5">
+                <Upload className="w-4 h-4 text-[#00450d]" />
+                <span>Campaign / Ballot Photo (GitHub Commit) *</span>
+              </label>
+              <p className="text-[11px] text-[#717a6d]">
+                Upload photo for voting ballot list. Will be committed to GitHub and shown across Admin, SuperAdmin, & Voter list.
+              </p>
+
+              {existingPhotoUrl && !photoFile && (
+                <div className="p-2 border border-[#c0c9bb] rounded-xl flex items-center space-x-3 bg-white">
+                  <img src={existingPhotoUrl.startsWith('http') ? existingPhotoUrl : `http://localhost:5000${existingPhotoUrl}`} alt="Ballot Photo" className="w-12 h-12 object-cover rounded-full border border-[#00450d]" />
+                  <div>
+                    <span className="text-[11px] text-[#00450d] font-bold block">Ballot Photo Saved</span>
+                    <span className="text-[9px] text-[#005312] bg-[#a0f399] px-1.5 py-0.5 rounded font-bold">Committed to GitHub</span>
+                  </div>
+                </div>
+              )}
+
+              {!isLocked && !isDeadlinePassed && (
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setPhotoFile(e.target.files[0])}
+                  className="w-full text-xs text-[#717a6d] file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#00450d] file:text-white hover:file:bg-[#006017] cursor-pointer"
+                />
+              )}
             </div>
           </div>
 
-          {/* TERMS & CONDITIONS MANDATORY AGREEMENT CHECKBOX */}
-          {selectedElection && (
-            <div className="p-5 bg-[#f4f4f0] border-2 border-[#00450d] rounded-2xl space-y-3 shadow-xs">
-              <div className="flex items-center space-x-2 text-[#00450d]">
-                <FileText className="w-5 h-5 text-[#00450d] shrink-0" />
-                <h4 className="font-extrabold text-xs">📜 Election Rules & Terms & Conditions Agreement</h4>
-              </div>
-
-              <div className="p-3.5 bg-white border border-[#c0c9bb] rounded-xl text-xs text-[#1b1c1a] leading-relaxed space-y-1.5 font-medium max-h-36 overflow-y-auto shadow-2xs">
-                <span className="font-extrabold text-[#00450d] block uppercase text-[10px]">Official Rules set by Admin:</span>
-                <p className="whitespace-pre-line text-xs">
-                  {selectedElection.terms_and_conditions || 'Candidates must be active enrolled students with clean academic standing and no disciplinary violations.'}
-                </p>
-              </div>
-
-              <label className="flex items-start space-x-3 p-3.5 bg-white border-2 border-[#a0f399] rounded-xl cursor-pointer hover:bg-[#e8f5e9]/50 transition-colors">
+          {/* Terms & Conditions Agreement */}
+          {!isLocked && (
+            <div className="p-4 bg-[#f4f4f0] border border-[#00450d] rounded-2xl space-y-2">
+              <label className="flex items-start space-x-3 cursor-pointer">
                 <input
                   type="checkbox"
                   required
                   checked={termsAgreed}
                   onChange={(e) => setTermsAgreed(e.target.checked)}
-                  disabled={isDeadlinePassed}
                   className="w-4 h-4 mt-0.5 text-[#00450d] focus:ring-[#00450d] border-[#00450d] rounded accent-[#00450d]"
                 />
-                <span className="text-xs font-black text-[#005312] leading-snug">
-                  I hereby confirm that I have read, understood, and agree to strictly abide by all the Election Rules, Eligibility Criteria, and Terms & Conditions specified above by Admin.
+                <span className="text-xs font-bold text-[#005312] leading-snug">
+                  I confirm that all uploaded candidate details are accurate and agree to submit my nomination for Admin approval.
                 </span>
               </label>
             </div>
           )}
 
-          {/* Submit / Lock Button */}
-          <div className="pt-4 border-t border-[#c0c9bb] flex items-center justify-between">
-            <div className="text-[11px] font-bold text-[#717a6d]">
-              {!termsAgreed && !candidateId && !isDeadlinePassed && (
-                <span className="text-[#ba1a1a] flex items-center space-x-1">
-                  <AlertCircle className="w-3.5 h-3.5" />
-                  <span>Check agreement box above to enable submit</span>
-                </span>
-              )}
-            </div>
-
+          {/* Upload Information Action Button */}
+          <div className="pt-4 border-t border-[#c0c9bb] flex items-center justify-end">
             <button
               type="submit"
-              disabled={isDeadlinePassed || submitting || (!termsAgreed && !candidateId)}
-              className={`px-8 h-12 rounded-xl font-bold text-xs shadow-md transition-all flex items-center space-x-2 ${
-                isDeadlinePassed || (!termsAgreed && !candidateId)
+              disabled={isLocked || isDeadlinePassed || submitting}
+              className={`px-8 h-12 rounded-xl font-extrabold text-xs shadow-md transition-all flex items-center space-x-2 ${
+                isLocked || isDeadlinePassed
                   ? 'bg-[#e9e8e4] text-[#717a6d] cursor-not-allowed border border-[#c0c9bb]'
                   : 'bg-[#00450d] hover:bg-[#006017] text-white active:scale-95'
               }`}
             >
-              {isDeadlinePassed ? (
+              {isLocked ? (
                 <>
                   <Lock className="w-4 h-4" />
-                  <span>Editing Locked (Deadline Passed)</span>
+                  <span>Profile Locked (Waiting for Approval)</span>
                 </>
               ) : (
                 <>
-                  <Save className="w-4 h-4" />
-                  <span>{submitting ? 'Saving Details...' : 'Save Candidate Profile'}</span>
+                  <Send className="w-4 h-4" />
+                  <span>{submitting ? 'Uploading to GitHub...' : 'Upload Information'}</span>
                 </>
               )}
             </button>

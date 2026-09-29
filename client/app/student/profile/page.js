@@ -198,46 +198,53 @@ export default function StudentProfilePage() {
             </div>
 
             {/* Candidate Quick Status Card */}
-            {nomination && (
+            {nomination && nomination.status !== 'rejected' && (
               <div className="bg-[#00450d] text-white rounded-2xl p-6 shadow-md space-y-3 relative overflow-hidden">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#acf4a4]">
-                    Candidate Nomination
+                    Candidate Details
                   </span>
                   <span
                     className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
                       nomination.status === 'approved'
                         ? 'bg-[#a0f399] text-[#005312]'
-                        : nomination.status === 'rejected'
-                        ? 'bg-[#ffb4ab] text-[#690005]'
                         : 'bg-[#ffdcc8] text-[#341100]'
                     }`}
                   >
-                    {nomination.status}
+                    {nomination.status === 'approved' ? 'Approved Candidate' : 'Waiting for Approval'}
                   </span>
                 </div>
                 <h3 className="text-base font-bold">{nomination.party || 'Independent Candidate'}</h3>
                 
+                {nomination.slogan && (
+                  <p className="text-xs text-[#acf4a4] font-medium italic">"{nomination.slogan}"</p>
+                )}
+
                 <div className="p-2.5 bg-white/10 rounded-xl border border-white/20 text-xs space-y-1">
                   <div className="flex items-center justify-between text-[#acf4a4] font-bold">
                     <span>Contesting Post:</span>
                     <span className="text-white font-black">{nomination.position_title || 'President'}</span>
                   </div>
-                  <div className="flex items-center justify-between text-[#acf4a4] font-bold">
-                    <span>Total Seats:</span>
-                    <span className="text-white font-black">🪑 {nomination.total_seats || 20} Seats</span>
-                  </div>
+                  {nomination.motto && (
+                    <div className="flex items-center justify-between text-[#acf4a4] font-bold">
+                      <span>Motto:</span>
+                      <span className="text-white font-medium truncate max-w-[180px]">{nomination.motto}</span>
+                    </div>
+                  )}
                 </div>
 
-                <p className="text-xs text-[#acf4a4] line-clamp-2 italic">
-                  "{nomination.manifesto || 'No manifesto added yet.'}"
-                </p>
+                {nomination.manifesto && (
+                  <p className="text-xs text-white/80 line-clamp-2">
+                    {nomination.manifesto}
+                  </p>
+                )}
+
                 <button
                   onClick={() => router.push('/student/candidate-nomination')}
                   className="w-full mt-2 py-2 bg-white text-[#00450d] font-bold text-xs rounded-xl hover:bg-[#faf9f5] transition-all flex items-center justify-center space-x-1.5"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
-                  <span>Edit Candidate Profile</span>
+                  <span>Upload / Candidate Details</span>
                 </button>
               </div>
             )}
