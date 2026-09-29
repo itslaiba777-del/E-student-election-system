@@ -1012,8 +1012,6 @@ export default function UnifiedAuthHub() {
             </form>
           </div>
         )}
-          </div>
-        )}
 
       </div>
 
