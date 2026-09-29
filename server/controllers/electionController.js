@@ -242,13 +242,21 @@ const getElectionResults = async (req, res) => {
 };
 
 /**
- * Update / Extend Election Schedule dynamically (Admin control)
+ * Update / Edit Election details & Schedule dynamically (Admin control)
  */
 const updateElectionSchedule = async (req, res) => {
   try {
     const { election_id } = req.params;
     const {
+      title,
+      position_title,
+      total_seats,
+      min_cgpa_criteria,
+      min_semester,
+      terms_and_conditions,
+      candidate_apply_start,
       candidate_apply_end,
+      voter_register_start,
       voter_register_end,
       voting_start,
       voting_end,
@@ -261,14 +269,30 @@ const updateElectionSchedule = async (req, res) => {
 
     const updated = await db.query(
       `UPDATE elections
-       SET candidate_apply_end = COALESCE($1, candidate_apply_end),
-           voter_register_end = COALESCE($2, voter_register_end),
-           voting_start = COALESCE($3, voting_start),
-           voting_end = COALESCE($4, voting_end),
+       SET title = COALESCE($1, title),
+           position_title = COALESCE($2, position_title),
+           total_seats = COALESCE($3, total_seats),
+           min_cgpa_criteria = COALESCE($4, min_cgpa_criteria),
+           min_semester = COALESCE($5, min_semester),
+           terms_and_conditions = COALESCE($6, terms_and_conditions),
+           candidate_apply_start = COALESCE($7, candidate_apply_start),
+           candidate_apply_end = COALESCE($8, candidate_apply_end),
+           voter_register_start = COALESCE($9, voter_register_start),
+           voter_register_end = COALESCE($10, voter_register_end),
+           voting_start = COALESCE($11, voting_start),
+           voting_end = COALESCE($12, voting_end),
            updated_at = NOW()
-       WHERE id = $5 RETURNING *`,
+       WHERE id = $13 RETURNING *`,
       [
+        title ? title.trim() : null,
+        position_title ? position_title.trim() : null,
+        total_seats ? parseInt(total_seats, 10) : null,
+        min_cgpa_criteria ? parseFloat(min_cgpa_criteria) : null,
+        min_semester ? parseInt(min_semester, 10) : null,
+        terms_and_conditions || null,
+        candidate_apply_start || null,
         candidate_apply_end || null,
+        voter_register_start || null,
         voter_register_end || null,
         voting_start || null,
         voting_end || null,
@@ -276,7 +300,7 @@ const updateElectionSchedule = async (req, res) => {
       ]
     );
 
-    // Determine action type
+    // Determine action type for audit logging
     const prevStart = electionCheck.rows[0].voting_start ? new Date(electionCheck.rows[0].voting_start) : null;
     const prevEnd = electionCheck.rows[0].voting_end ? new Date(electionCheck.rows[0].voting_end) : null;
     const nextStart = voting_start ? new Date(voting_start) : prevStart;
@@ -301,7 +325,7 @@ const updateElectionSchedule = async (req, res) => {
     );
 
     return res.status(200).json({
-      message: 'Election schedule updated successfully.',
+      message: 'Election details and schedule updated successfully in Database.',
       election: updated.rows[0],
     });
   } catch (error) {

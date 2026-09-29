@@ -534,6 +534,10 @@ export default function UnifiedAuthHub() {
               <button
                 type="button"
                 onClick={() => {
+                  if (!isVoterRegOpen()) {
+                    alert(`⚠️ Voter Registration is Closed!\nRegistration window is allowed from ${activeElection.voter_register_start ? new Date(activeElection.voter_register_start).toLocaleString() : 'start date'} to ${activeElection.voter_register_end ? new Date(activeElection.voter_register_end).toLocaleString() : 'end date'}.`);
+                    return;
+                  }
                   setTargetRole('voter');
                   setViewMode('register-voter');
                 }}
@@ -550,6 +554,10 @@ export default function UnifiedAuthHub() {
               <button
                 type="button"
                 onClick={() => {
+                  if (!isCandidateRegOpen()) {
+                    alert(`⚠️ Candidate Registration is Closed!\nRegistration window is allowed from ${activeElection.candidate_apply_start ? new Date(activeElection.candidate_apply_start).toLocaleString() : 'start date'} to ${activeElection.candidate_apply_end ? new Date(activeElection.candidate_apply_end).toLocaleString() : 'end date'}.`);
+                    return;
+                  }
                   setCandidateTermsAgreed(false);
                   setShowCandidateTermsModal(true);
                 }}
@@ -1065,6 +1073,15 @@ export default function UnifiedAuthHub() {
             </div>
 
             <div className="space-y-3 bg-[#f4f4f0] p-4 rounded-xl text-xs text-[#1b1c1a] border border-[#c0c9bb]">
+              <div className="p-2.5 bg-white rounded-lg border border-[#c0c9bb] space-y-1">
+                <span className="font-extrabold text-[#00450d] text-[11px] block">{activeElection.title}</span>
+                <div className="flex items-center space-x-2 text-[10px] font-bold text-[#717a6d]">
+                  <span>🏆 Seat: {activeElection.position_title || 'President'}</span>
+                  <span>•</span>
+                  <span>🪑 Total Seats: {activeElection.total_seats || 20}</span>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <div className="bg-white p-2.5 rounded-lg border border-[#c0c9bb]">
                   <span className="font-bold text-[#00450d] text-[10px] uppercase block">Min Required Semester</span>
@@ -1081,10 +1098,12 @@ export default function UnifiedAuthHub() {
                 </div>
               </div>
 
-              <div className="space-y-1 text-[#41493e] leading-relaxed">
-                <p><strong>1. Academic & Conduct Record:</strong> Candidate must be an active enrolled student with no pending disciplinary penalties.</p>
-                <p><strong>2. Electoral Rules:</strong> All campaign slogans, election symbols, and manifestos are subject to Admin approval.</p>
-                <p><strong>3. Biometric Verification:</strong> Candidate must complete face biometrics & OTP verification.</p>
+              {/* Dynamic Rules Set by Admin in Database */}
+              <div className="p-3 bg-white border border-[#c0c9bb] rounded-xl space-y-1">
+                <span className="font-extrabold text-[#00450d] text-[10px] uppercase block">📜 Election Rules & Code of Conduct set by Admin:</span>
+                <p className="text-xs text-[#41493e] leading-relaxed whitespace-pre-line font-medium">
+                  {activeElection.terms_and_conditions || 'Candidates must be active enrolled students with clean academic standing and no disciplinary violations.'}
+                </p>
               </div>
             </div>
 

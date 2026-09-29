@@ -92,11 +92,18 @@ export default function SuperAdminElectionsPage() {
 
   const [formData, setFormData] = useState({
     title: '',
+    position_title: 'President',
+    total_seats: 20,
+    min_cgpa_criteria: 3.0,
+    min_semester: 3,
+    terms_and_conditions: 'Candidates must be active enrolled students with clean academic standing and no disciplinary violations.',
     university_id: 1,
     scope: 'University-wide',
     conditional_scope: '',
-    app_start: '',
-    app_end: '',
+    candidate_apply_start: '',
+    candidate_apply_end: '',
+    voter_register_start: '',
+    voter_register_end: '',
     voting_start: '',
     voting_end: '',
   });
@@ -127,11 +134,18 @@ export default function SuperAdminElectionsPage() {
     setCurrentStep(1);
     setFormData({
       title: '',
+      position_title: 'President',
+      total_seats: 20,
+      min_cgpa_criteria: 3.0,
+      min_semester: 3,
+      terms_and_conditions: 'Candidates must be active enrolled students with clean academic standing and no disciplinary violations.',
       university_id: 1,
       scope: 'University-wide',
       conditional_scope: '',
-      app_start: '',
-      app_end: '',
+      candidate_apply_start: '',
+      candidate_apply_end: '',
+      voter_register_start: '',
+      voter_register_end: '',
       voting_start: '',
       voting_end: '',
     });
@@ -143,12 +157,19 @@ export default function SuperAdminElectionsPage() {
     setEditingElection(el);
     setCurrentStep(1);
     setFormData({
-      title: el.title,
+      title: el.title || '',
+      position_title: el.position_title || 'President',
+      total_seats: el.total_seats || 20,
+      min_cgpa_criteria: el.min_cgpa_criteria || 3.0,
+      min_semester: el.min_semester || 3,
+      terms_and_conditions: el.terms_and_conditions || 'Candidates must be active enrolled students with clean academic standing and no disciplinary violations.',
       university_id: el.university_id || 1,
       scope: el.scope || 'University-wide',
       conditional_scope: el.scope_detail || '',
-      app_start: el.app_start || '',
-      app_end: el.app_end || '',
+      candidate_apply_start: el.candidate_apply_start || el.app_start || '',
+      candidate_apply_end: el.candidate_apply_end || el.app_end || '',
+      voter_register_start: el.voter_register_start || '',
+      voter_register_end: el.voter_register_end || '',
       voting_start: el.voting_start || '',
       voting_end: el.voting_end || '',
     });
@@ -166,31 +187,13 @@ export default function SuperAdminElectionsPage() {
 
     try {
       if (editingElection) {
-        await electionAPI.updateStatus(editingElection.id, formData);
-        setElections((prev) =>
-          prev.map((el) => (el.id === editingElection.id ? { ...el, ...formData } : el))
-        );
+        await electionAPI.updateSchedule(editingElection.id, formData);
       } else {
-        const res = await electionAPI.create(formData);
-        const newEl = res.data.election || {
-          id: Date.now(),
-          university_name: 'COMSATS University',
-          status: 'upcoming',
-          ...formData,
-        };
-        setElections((prev) => [newEl, ...prev]);
+        await electionAPI.create(formData);
       }
+      await fetchElections();
     } catch (err) {
       console.warn('Election save API fallback:', err);
-      if (!editingElection) {
-        const fallbackEl = {
-          id: Date.now(),
-          university_name: 'COMSATS University',
-          status: 'upcoming',
-          ...formData,
-        };
-        setElections((prev) => [fallbackEl, ...prev]);
-      }
     } finally {
       setProcessing(false);
       setIsModalOpen(false);
@@ -624,19 +627,71 @@ export default function SuperAdminElectionsPage() {
               {currentStep === 1 && (
                 <div className="space-y-4">
                   <h4 className="text-xs font-bold text-[#717a6d] uppercase tracking-wider">
-                    Step 1: General Information
+                    Step 1: General Information & Criteria
                   </h4>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-[#1b1c1a]">Election Title</label>
+                    <label className="text-xs font-bold text-[#1b1c1a]">Election Title *</label>
                     <input
                       type="text"
                       required
                       value={formData.title}
                       onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      placeholder="e.g. Student Union Presidential 2026"
+                      placeholder="e.g. University Executive Union Election 2026"
                       className="w-full px-3 py-2 text-xs border border-[#c0c9bb] rounded-xl focus:ring-2 focus:ring-[#00450d] outline-none"
                     />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-[#1b1c1a]">Position / Post Name *</label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.position_title}
+                        onChange={(e) => setFormData({ ...formData, position_title: e.target.value })}
+                        placeholder="e.g. President or Vice President"
+                        className="w-full px-3 py-2 text-xs border border-[#c0c9bb] rounded-xl outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-[#1b1c1a]">Total Seats *</label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={formData.total_seats}
+                        onChange={(e) => setFormData({ ...formData, total_seats: e.target.value })}
+                        placeholder="20"
+                        className="w-full px-3 py-2 text-xs border border-[#c0c9bb] rounded-xl outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-[#1b1c1a]">Minimum CGPA Criteria *</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0.0"
+                        max="4.0"
+                        value={formData.min_cgpa_criteria}
+                        onChange={(e) => setFormData({ ...formData, min_cgpa_criteria: e.target.value })}
+                        placeholder="3.0"
+                        className="w-full px-3 py-2 text-xs border border-[#c0c9bb] rounded-xl outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-[#1b1c1a]">Minimum Semester *</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={formData.min_semester}
+                        onChange={(e) => setFormData({ ...formData, min_semester: e.target.value })}
+                        placeholder="3"
+                        className="w-full px-3 py-2 text-xs border border-[#c0c9bb] rounded-xl outline-none"
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-1">
@@ -708,27 +763,54 @@ export default function SuperAdminElectionsPage() {
               {currentStep === 3 && (
                 <div className="space-y-4">
                   <h4 className="text-xs font-bold text-[#717a6d] uppercase tracking-wider">
-                    Step 3: Candidate Application Window
+                    Step 3: Registration Timings (Candidate & Voter Windows)
                   </h4>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-bold text-[#1b1c1a]">Start Date</label>
-                      <input
-                        type="date"
-                        value={formData.app_start}
-                        onChange={(e) => setFormData({ ...formData, app_start: e.target.value })}
-                        className="w-full px-3 py-2 text-xs border border-[#c0c9bb] rounded-xl outline-none mt-1"
-                      />
+                  <div className="space-y-3 p-3.5 bg-[#f4f4f0] rounded-xl border border-[#c0c9bb]">
+                    <span className="text-[11px] font-extrabold text-[#00450d] uppercase block">Candidate Registration Window</span>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-[#1b1c1a]">Start Datetime</label>
+                        <input
+                          type="datetime-local"
+                          value={formData.candidate_apply_start}
+                          onChange={(e) => setFormData({ ...formData, candidate_apply_start: e.target.value })}
+                          className="w-full px-3 py-2 text-xs border border-[#c0c9bb] rounded-xl outline-none mt-1 bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-[#1b1c1a]">End Datetime</label>
+                        <input
+                          type="datetime-local"
+                          value={formData.candidate_apply_end}
+                          onChange={(e) => setFormData({ ...formData, candidate_apply_end: e.target.value })}
+                          className="w-full px-3 py-2 text-xs border border-[#c0c9bb] rounded-xl outline-none mt-1 bg-white"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-xs font-bold text-[#1b1c1a]">End Date</label>
-                      <input
-                        type="date"
-                        value={formData.app_end}
-                        onChange={(e) => setFormData({ ...formData, app_end: e.target.value })}
-                        className="w-full px-3 py-2 text-xs border border-[#c0c9bb] rounded-xl outline-none mt-1"
-                      />
+                  </div>
+
+                  <div className="space-y-3 p-3.5 bg-[#f4f4f0] rounded-xl border border-[#c0c9bb]">
+                    <span className="text-[11px] font-extrabold text-[#005312] uppercase block">Voter Registration Window</span>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-[#1b1c1a]">Start Datetime</label>
+                        <input
+                          type="datetime-local"
+                          value={formData.voter_register_start}
+                          onChange={(e) => setFormData({ ...formData, voter_register_start: e.target.value })}
+                          className="w-full px-3 py-2 text-xs border border-[#c0c9bb] rounded-xl outline-none mt-1 bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-[#1b1c1a]">End Datetime</label>
+                        <input
+                          type="datetime-local"
+                          value={formData.voter_register_end}
+                          onChange={(e) => setFormData({ ...formData, voter_register_end: e.target.value })}
+                          className="w-full px-3 py-2 text-xs border border-[#c0c9bb] rounded-xl outline-none mt-1 bg-white"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -766,13 +848,32 @@ export default function SuperAdminElectionsPage() {
               {currentStep === 5 && (
                 <div className="space-y-4">
                   <h4 className="text-xs font-bold text-[#717a6d] uppercase tracking-wider">
-                    Step 5: Review & Launch
+                    Step 5: Rules, Terms & Review
                   </h4>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-[#1b1c1a]">Election Rules & Terms & Conditions *</label>
+                    <textarea
+                      rows={3}
+                      value={formData.terms_and_conditions}
+                      onChange={(e) => setFormData({ ...formData, terms_and_conditions: e.target.value })}
+                      placeholder="Specify rules for candidate eligibility, code of conduct, and terms..."
+                      className="w-full px-3 py-2 text-xs border border-[#c0c9bb] rounded-xl outline-none bg-white font-medium"
+                    />
+                  </div>
 
                   <div className="bg-[#f4f4f0] p-4 rounded-xl border border-[#c0c9bb] space-y-2 text-xs">
                     <div className="flex justify-between">
                       <span className="text-[#717a6d]">Election Title</span>
                       <span className="font-bold text-[#1b1c1a]">{formData.title}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#717a6d]">Position & Seats</span>
+                      <span className="font-bold text-[#00450d]">{formData.position_title} ({formData.total_seats} Seats)</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#717a6d]">Min CGPA Criteria</span>
+                      <span className="font-bold text-[#005312] bg-[#a0f399] px-2 py-0.5 rounded">{formData.min_cgpa_criteria} CGPA</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-[#717a6d]">Scope</span>

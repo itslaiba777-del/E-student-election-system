@@ -502,10 +502,18 @@ const safeQuery = async (text, params = []) => {
       const id = params[params.length - 1];
       const elec = (memoryDb.elections || []).find((e) => e.id == id);
       if (elec) {
-        if (params[0]) elec.candidate_apply_end = params[0];
-        if (params[1]) elec.voter_register_end = params[1];
-        if (params[2]) elec.voting_start = params[2];
-        if (params[3]) elec.voting_end = params[3];
+        if (params[0]) elec.title = params[0];
+        if (params[1]) elec.position_title = params[1];
+        if (params[2]) elec.total_seats = params[2];
+        if (params[3]) elec.min_cgpa_criteria = params[3];
+        if (params[4]) elec.min_semester = params[4];
+        if (params[5]) elec.terms_and_conditions = params[5];
+        if (params[6]) elec.candidate_apply_start = params[6];
+        if (params[7]) elec.candidate_apply_end = params[7];
+        if (params[8]) elec.voter_register_start = params[8];
+        if (params[9]) elec.voter_register_end = params[9];
+        if (params[10]) elec.voting_start = params[10];
+        if (params[11]) elec.voting_end = params[11];
         return { rows: [elec] };
       }
       return { rows: [] };
