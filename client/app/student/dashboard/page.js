@@ -139,6 +139,21 @@ export default function StudentDashboardPage() {
     } catch (e) {}
   };
 
+  const isElectionLive = (elec) => {
+    if (!elec) return false;
+    const now = new Date();
+    const statusStr = (elec.calculated_status || elec.status || '').toLowerCase();
+    if (statusStr === 'active' || statusStr === 'live' || statusStr === 'ongoing') {
+      return true;
+    }
+    if (elec.voting_start && elec.voting_end) {
+      const start = new Date(elec.voting_start);
+      const end = new Date(elec.voting_end);
+      if (now >= start && now <= end) return true;
+    }
+    return false;
+  };
+
   // Step 1: Trigger OTP for Voting
   const handleStartVotingFlow = () => {
     if (hasVoted) return;
@@ -326,7 +341,7 @@ export default function StudentDashboardPage() {
         {/* -------------------------------------------------------------
             SECTION 2: LIVE ELECTION BANNER & VOTING ACTION
         ------------------------------------------------------------- */}
-        {activeElection ? (
+        {activeElection && isElectionLive(activeElection) ? (
           <section className="space-y-4">
             <div className="bg-[#00450d] text-white rounded-2xl p-6 md:p-8 shadow-md relative overflow-hidden space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -366,6 +381,19 @@ export default function StudentDashboardPage() {
               )}
             </div>
           </section>
+        ) : activeElection ? (
+          <div className="bg-white border border-[#c0c9bb] rounded-2xl p-6 text-center space-y-2">
+            <div className="w-12 h-12 rounded-2xl bg-[#f4f4f0] text-[#00450d] flex items-center justify-center mx-auto mb-2 border border-[#c0c9bb]">
+              <Clock className="w-6 h-6" />
+            </div>
+            <h3 className="font-extrabold text-[#00450d] text-base">Election Schedule: {activeElection.title}</h3>
+            <p className="text-xs text-[#717a6d] max-w-md mx-auto leading-relaxed">
+              Live election ballot box is currently <strong className="text-[#ba1a1a]">INACTIVE</strong>. It will automatically activate when live voting opens on{' '}
+              <strong className="text-[#00450d]">
+                {activeElection.voting_start ? new Date(activeElection.voting_start).toLocaleString() : 'Scheduled Voting Date'}
+              </strong>.
+            </p>
+          </div>
         ) : (
           <div className="bg-white border border-[#c0c9bb] rounded-2xl p-6 text-center space-y-2">
             <div className="w-12 h-12 rounded-2xl bg-[#f4f4f0] text-[#00450d] flex items-center justify-center mx-auto mb-2 border border-[#c0c9bb]">
