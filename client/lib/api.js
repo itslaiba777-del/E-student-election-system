@@ -90,6 +90,7 @@ export const academicStructureAPI = academicAPI;
 export const candidateAPI = {
   getByElection: (electionId, status) => api.get(`/candidates/election/${electionId}`, { params: { status } }),
   getMyNomination: () => api.get('/candidates/my-nomination'),
+  convertToVoter: () => api.post('/candidates/convert-to-voter'),
   nominate: (formData) =>
     api.post('/candidates', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

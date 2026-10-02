@@ -15,6 +15,7 @@ const {
   updateStudentPassword,
   deleteStudent,
 } = require('../controllers/adminController');
+const { getAllCandidates } = require('../controllers/candidateController');
 const { verifyToken, requireRole } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
 
@@ -35,7 +36,7 @@ router.put('/students/:id/status', updateStudentDetails);
 router.put('/students/:id/password', updateStudentPassword);
 router.delete('/students/:id', deleteStudent);
 
-router.get('/candidates', getApprovedCandidates);
+router.get('/candidates', getAllCandidates);
 
 module.exports = router;
 

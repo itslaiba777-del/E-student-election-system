@@ -377,14 +377,18 @@ const safeQuery = async (text, params = []) => {
         id: (memoryDb.candidates || []).length + 1,
         name: params[0],
         party: params[1],
-        manifesto: params[2],
-        photo_url: params[3],
-        symbol_image_url: params[4],
-        faculty_id: params[5],
-        department_id: params[6],
-        program_id: params[7],
-        election_id: params[8],
-        status: params[9] || 'pending',
+        slogan: params[2] || '',
+        motto: params[3] || '',
+        manifesto: params[4] || params[2] || '',
+        bio: params[5] || params[3] || '',
+        experience: params[6] || params[4] || '',
+        photo_url: params[6] || params[3] || null,
+        symbol_image_url: params[7] || params[4] || null,
+        faculty_id: params[8] || params[5] || 1,
+        department_id: params[9] || params[6] || 1,
+        program_id: params[10] || params[7] || null,
+        election_id: params[11] || params[8] || 1,
+        status: params[12] || 'pending',
         created_at: new Date().toISOString(),
       };
       if (!memoryDb.candidates) memoryDb.candidates = [];
@@ -394,11 +398,22 @@ const safeQuery = async (text, params = []) => {
 
     // UPDATE candidates
     if (queryStr.startsWith('update candidates')) {
-      const statusVal = params[0];
-      const candId = params[1];
-      const cand = (memoryDb.candidates || []).find((c) => c.id == candId);
+      const id = params[params.length - 1];
+      const cand = (memoryDb.candidates || []).find((c) => c.id == id);
       if (cand) {
-        cand.status = statusVal;
+        if (queryStr.includes('set status')) {
+          cand.status = params[0];
+        } else {
+          if (params[0] !== null && params[0] !== undefined) cand.party = params[0];
+          if (params[1] !== null && params[1] !== undefined) cand.slogan = params[1];
+          if (params[2] !== null && params[2] !== undefined) cand.motto = params[2];
+          if (params[3] !== null && params[3] !== undefined) cand.manifesto = params[3];
+          if (params[4] !== null && params[4] !== undefined) cand.bio = params[4];
+          if (params[5] !== null && params[5] !== undefined) cand.experience = params[5];
+          if (params[6] !== null && params[6] !== undefined) cand.photo_url = params[6];
+          if (params[7] !== null && params[7] !== undefined) cand.symbol_image_url = params[7];
+          cand.status = 'pending';
+        }
         return { rows: [cand] };
       }
       return { rows: [] };

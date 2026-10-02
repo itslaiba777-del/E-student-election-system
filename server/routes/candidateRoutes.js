@@ -2,20 +2,28 @@ const express = require('express');
 const router = express.Router();
 const {
   registerCandidate,
+  getAllCandidates,
   getCandidatesByElection,
   updateCandidateStatus,
   updateCandidateDetails,
   getMyNomination,
+  convertToVoter,
 } = require('../controllers/candidateController');
 const { verifyToken, requireRole } = require('../middleware/authMiddleware');
 const requireAdminPermission = require('../middleware/permissionMiddleware');
 const upload = require('../middleware/uploadMiddleware');
+
+// Get ALL candidates (Admin & SuperAdmin view)
+router.get('/', getAllCandidates);
 
 // Get candidates for an election (Public/Student)
 router.get('/election/:election_id', getCandidatesByElection);
 
 // Get current candidate's nomination details
 router.get('/my-nomination', verifyToken, getMyNomination);
+
+// Convert rejected candidate to voter profile
+router.post('/convert-to-voter', verifyToken, convertToVoter);
 
 // Candidate nomination registration (With candidate photo & candidate symbol upload)
 router.post(

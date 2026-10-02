@@ -88,6 +88,70 @@ const registerCandidate = async (req, res) => {
 };
 
 /**
+ * Get ALL Candidate Applications (Admin & SuperAdmin view)
+ */
+const getAllCandidates = async (req, res) => {
+  try {
+    const { status, election_id } = req.query;
+
+    let query = `
+      SELECT c.*, c.name as full_name, c.party as party_name,
+             f.faculty_name, d.department_name, p.program_name,
+             e.title as election_title, e.position_title
+      FROM candidates c
+      LEFT JOIN faculties f ON c.faculty_id = f.id
+      LEFT JOIN departments d ON c.department_id = d.id
+      LEFT JOIN programs p ON c.program_id = p.id
+      LEFT JOIN elections e ON c.election_id = e.id
+    `;
+    let params = [];
+    let conditions = [];
+
+    if (status && status !== 'all') {
+      params.push(status);
+      conditions.push(`c.status = $${params.length}`);
+    }
+
+    if (election_id) {
+      params.push(election_id);
+      conditions.push(`c.election_id = $${params.length}`);
+    }
+
+    if (conditions.length > 0) {
+      query += ` WHERE ${conditions.join(' AND ')}`;
+    }
+
+    query += ' ORDER BY c.created_at DESC';
+
+    const result = await db.query(query, params);
+
+    const formatted = result.rows.map((row) => ({
+      ...row,
+      id: row.id,
+      full_name: row.name || row.full_name || 'Candidate',
+      student_id: row.registration_number || row.student_id || `ST-${row.id}`,
+      party_name: row.party || row.party_name || 'Independent',
+      party: row.party || row.party_name || 'Independent',
+      slogan: row.slogan || '',
+      motto: row.motto || '',
+      bio: row.bio || '',
+      manifesto: row.manifesto || '',
+      experience: row.experience || '',
+      photo_url: row.photo_url || null,
+      symbol_image_url: row.symbol_image_url || null,
+      position_title: row.position_title || 'President',
+      applied_date: row.created_at ? new Date(row.created_at).toLocaleDateString() : 'Recent',
+      status: row.status || 'pending',
+    }));
+
+    return res.status(200).json({ candidates: formatted });
+  } catch (error) {
+    console.error('Get all candidates error:', error);
+    return res.status(500).json({ message: 'Server error fetching all candidates.' });
+  }
+};
+
+/**
  * Get Candidates for an election
  */
 const getCandidatesByElection = async (req, res) => {
@@ -122,11 +186,12 @@ const getCandidatesByElection = async (req, res) => {
 
 /**
  * Update candidate approval status (Requires can_approve_candidates permission)
+ * Supports 'approved', 'rejected', or 'reupload_requested'
  */
 const updateCandidateStatus = async (req, res) => {
   try {
     const { candidate_id } = req.params;
-    const { status } = req.body; // 'approved' or 'rejected'
+    const { status } = req.body; // 'approved' | 'rejected' | 'reupload_requested'
 
     if (status === 'approved') {
       const candidateCheck = await db.query('SELECT election_id FROM candidates WHERE id = $1', [candidate_id]);
@@ -151,6 +216,31 @@ const updateCandidateStatus = async (req, res) => {
       }
     }
 
+    // If Admin requests Re-upload / Edit: Clear/reset candidate uploaded details & images from DB
+    if (status === 'reupload_requested') {
+      const resetRes = await db.query(
+        `UPDATE candidates
+         SET status = 'reupload_requested',
+             party = null,
+             slogan = null,
+             motto = null,
+             manifesto = null,
+             bio = null,
+             experience = null,
+             photo_url = null,
+             symbol_image_url = null
+         WHERE id = $1 RETURNING *`,
+        [candidate_id]
+      );
+      if (resetRes.rows.length === 0) {
+        return res.status(404).json({ message: 'Candidate nomination not found.' });
+      }
+      return res.status(200).json({
+        message: 'Re-upload requested! Candidate details reset in database for fresh candidate entry.',
+        candidate: resetRes.rows[0],
+      });
+    }
+
     const result = await db.query(
       'UPDATE candidates SET status = $1 WHERE id = $2 RETURNING *',
       [status, candidate_id]
@@ -162,19 +252,9 @@ const updateCandidateStatus = async (req, res) => {
 
     const candidate = result.rows[0];
 
-    // If candidate application is REJECTED, automatically convert/demote candidate to Voter!
-    if (status === 'rejected') {
-      await db.query(
-        `UPDATE students
-         SET role = 'voter', user_role = 'voter'
-         WHERE full_name ILIKE $1 OR id = $2`,
-        [candidate.name, candidate.student_id || 0]
-      );
-    }
-
     return res.status(200).json({
       message: status === 'rejected'
-        ? `Candidate application rejected. Student has been automatically converted to a Voter.`
+        ? `Candidate application rejected.`
         : `Candidate application approved! Candidate is now eligible to contest in the election.`,
       candidate,
     });
@@ -316,11 +396,51 @@ const getMyNomination = async (req, res) => {
   }
 };
 
+/**
+ * Convert Candidate profile back to standard Voter profile upon acknowledged rejection
+ */
+const convertToVoter = async (req, res) => {
+  try {
+    const studentId = req.user?.id;
+    const studentEmail = req.user?.email;
+
+    if (!studentId && !studentEmail) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    // Update student user_role to 'voter'
+    await db.query(
+      `UPDATE students SET user_role = 'voter' WHERE id = $1 OR email = $2`,
+      [studentId, studentEmail]
+    );
+
+    // Remove candidate nomination record
+    const studentRes = await db.query(
+      'SELECT full_name FROM students WHERE id = $1 OR email = $2',
+      [studentId, studentEmail]
+    );
+    if (studentRes.rows.length > 0) {
+      const name = studentRes.rows[0].full_name;
+      await db.query('DELETE FROM candidates WHERE name ILIKE $1', [name]);
+    }
+
+    return res.status(200).json({
+      message: 'Account role converted to standard Voter. Profile automatically logging out...',
+    });
+  } catch (error) {
+    console.error('Convert to voter error:', error);
+    return res.status(500).json({ message: 'Server error converting candidate profile to voter.' });
+  }
+};
+
 module.exports = {
   registerCandidate,
+  getAllCandidates,
   getCandidatesByElection,
   updateCandidateStatus,
   updateCandidateDetails,
   getMyNomination,
+  convertToVoter,
 };
+
 

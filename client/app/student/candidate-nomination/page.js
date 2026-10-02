@@ -45,6 +45,10 @@ export default function CandidateNominationPage() {
   const [isDeadlinePassed, setIsDeadlinePassed] = useState(false);
   const [applyEndDeadline, setApplyEndDeadline] = useState(null);
 
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [rejectAcknowledged, setRejectAcknowledged] = useState(false);
+  const [converting, setConverting] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState(null);
@@ -82,8 +86,22 @@ export default function CandidateNominationPage() {
         setExistingPhotoUrl(cand.photo_url);
         setIsDeadlinePassed(myRes.data.is_deadline_passed);
 
-        if (cand.status === 'pending' || cand.status === 'approved') {
+        if (cand.status === 'pending' || cand.status === 'approved' || cand.status === 'rejected') {
           setIsLocked(true);
+        } else if (cand.status === 'reupload_requested') {
+          setIsLocked(false); // Unlock for reupload
+          setParty('');
+          setSlogan('');
+          setMotto('');
+          setBio('');
+          setManifesto('');
+          setExperience('');
+          setExistingSymbolUrl(null);
+          setExistingPhotoUrl(null);
+        }
+
+        if (['approved', 'rejected', 'reupload_requested'].includes(cand.status)) {
+          setShowStatusModal(true);
         }
 
         if (cand.candidate_apply_end) {
@@ -94,6 +112,25 @@ export default function CandidateNominationPage() {
       console.warn('Nomination data fetch warning:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleConvertToVoter = async () => {
+    if (!rejectAcknowledged) return;
+    setConverting(true);
+    try {
+      await candidateAPI.convertToVoter();
+      alert('Aap ki profile standard Voter profile m convert ho gayi hai. Profile logging out...');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      router.push('/');
+    } catch (e) {
+      alert('Error converting profile. Logging out...');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      router.push('/');
+    } finally {
+      setConverting(false);
     }
   };
 
@@ -182,7 +219,71 @@ export default function CandidateNominationPage() {
     <div className="bg-[#faf9f5] min-h-screen text-[#1b1c1a] font-sans flex flex-col md:flex-row">
       <StudentSidebar />
 
-      <main className="flex-1 p-6 md:p-8 space-y-6 max-w-4xl overflow-x-hidden">
+      <main className="flex-1 p-6 md:p-8 space-y-6 max-w-4xl overflow-x-hidden relative">
+        {/* POPUP NOTIFICATION MODAL FOR CANDIDATE STATUS */}
+        {showStatusModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border border-[#c0c9bb] space-y-5 text-center">
+              {status === 'approved' && (
+                <>
+                  <div className="w-16 h-16 rounded-full bg-[#a0f399] text-[#005312] flex items-center justify-center mx-auto shadow-md">
+                    <CheckCircle2 className="w-10 h-10" />
+                  </div>
+                  <h3 className="text-xl font-extrabold text-[#00450d]">Candidate Nomination APPROVED! 🎉</h3>
+                  <p className="text-xs text-[#41493e] leading-relaxed">
+                    Mubarak Ho! Aap ki candidate nomination Admin ki taraf se <strong className="text-[#005312]">APPROVED</strong> ho gayi hai.
+                    Aap ka portal status change ho kar <strong className="text-[#005312]">"Approved Candidate"</strong> ho gaya hai. Aap ke party ka symbol aur ballot photo active hain.
+                  </p>
+                  <button
+                    onClick={() => setShowStatusModal(false)}
+                    className="w-full py-3 bg-[#00450d] hover:bg-[#006017] text-white font-extrabold text-xs rounded-xl shadow-md"
+                  >
+                    View Approved Profile ➔
+                  </button>
+                </>
+              )}
+
+              {status === 'rejected' && (
+                <>
+                  <div className="w-16 h-16 rounded-full bg-[#ffdad6] text-[#ba1a1a] flex items-center justify-center mx-auto shadow-md">
+                    <AlertCircle className="w-10 h-10" />
+                  </div>
+                  <h3 className="text-xl font-extrabold text-[#ba1a1a]">Nomination REJECTED ❌</h3>
+                  <p className="text-xs text-[#41493e] leading-relaxed">
+                    Aap ki candidate nomination Admin ki taraf se <strong className="text-[#ba1a1a]">REJECTED</strong> ho gayi hai.
+                    Reason jannay ke liye university administration se contact karain. Aap ki candidate profile freeze kar di gayi hai.
+                  </p>
+                  <button
+                    onClick={() => setShowStatusModal(false)}
+                    className="w-full py-3 bg-[#ba1a1a] hover:bg-[#93000a] text-white font-extrabold text-xs rounded-xl shadow-md"
+                  >
+                    Review Rejection Notice ➔
+                  </button>
+                </>
+              )}
+
+              {status === 'reupload_requested' && (
+                <>
+                  <div className="w-16 h-16 rounded-full bg-[#ffdcc8] text-[#341100] flex items-center justify-center mx-auto shadow-md">
+                    <Sparkles className="w-10 h-10 text-[#d97706]" />
+                  </div>
+                  <h3 className="text-xl font-extrabold text-[#8a3b00]">Action Required: Re-upload Details ⚠️</h3>
+                  <p className="text-xs text-[#41493e] leading-relaxed">
+                    Admin ne aap ko profile details <strong className="text-[#8a3b00]">UPDATE / RE-UPLOAD</strong> karne ka option diya hai.
+                    Pehlay university administration se contact karain. Aap ka registration form unlock kar ke clear kar diya gaya hai. Apni fresh details enter kar ke upload karain.
+                  </p>
+                  <button
+                    onClick={() => setShowStatusModal(false)}
+                    className="w-full py-3 bg-[#8a3b00] hover:bg-[#6c2e00] text-white font-extrabold text-xs rounded-xl shadow-md"
+                  >
+                    Update & Re-upload Details Now ➔
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#c0c9bb] pb-6">
           <div>
@@ -196,6 +297,16 @@ export default function CandidateNominationPage() {
                 <span className="px-2.5 py-0.5 bg-[#a0f399] text-[#005312] text-[10px] font-extrabold rounded-full uppercase tracking-wider flex items-center space-x-1">
                   <UserCheck className="w-3 h-3" />
                   <span>Approved Candidate</span>
+                </span>
+              ) : status === 'rejected' ? (
+                <span className="px-2.5 py-0.5 bg-[#ffdad6] text-[#ba1a1a] text-[10px] font-extrabold rounded-full uppercase tracking-wider flex items-center space-x-1">
+                  <AlertCircle className="w-3 h-3" />
+                  <span>Rejected Candidate</span>
+                </span>
+              ) : status === 'reupload_requested' ? (
+                <span className="px-2.5 py-0.5 bg-[#ffdcc8] text-[#8a3b00] text-[10px] font-extrabold rounded-full uppercase tracking-wider flex items-center space-x-1">
+                  <Clock className="w-3 h-3" />
+                  <span>Re-upload Requested</span>
                 </span>
               ) : status === 'pending' && isLocked ? (
                 <span className="px-2.5 py-0.5 bg-[#ffdcc8] text-[#341100] text-[10px] font-extrabold rounded-full uppercase tracking-wider flex items-center space-x-1">
@@ -219,14 +330,63 @@ export default function CandidateNominationPage() {
           </div>
         </div>
 
-        {/* Status Banner */}
+        {/* Status Banners */}
         {status === 'approved' ? (
           <div className="p-5 rounded-2xl bg-[#e8f5e9] border-2 border-[#a0f399] text-[#005312] flex items-center space-x-3 shadow-xs">
             <CheckCircle2 className="w-6 h-6 text-[#005312] shrink-0" />
             <div>
-              <h3 className="text-xs font-black uppercase tracking-wider">Approved Candidate</h3>
+              <h3 className="text-xs font-black uppercase tracking-wider">Approved Candidate Status Confirmed</h3>
               <p className="text-xs mt-0.5 font-medium">
-                Approved candidate status confirmed! Your election symbol & campaign ballot photo are active across SuperAdmin, Admin, and Voter lists via GitHub.
+                Aap ki nomination Admin ki taraf se Approved ho gayi hai. Aap ki party ka symbol aur ballot photo system & GitHub par active hain.
+              </p>
+            </div>
+          </div>
+        ) : status === 'rejected' ? (
+          <div className="p-6 rounded-2xl bg-[#fff5f5] border-2 border-[#ffdad6] text-[#ba1a1a] space-y-4 shadow-sm">
+            <div className="flex items-start space-x-3">
+              <AlertCircle className="w-6 h-6 text-[#ba1a1a] shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-wider">Candidate Profile Frozen — Nomination Rejected</h3>
+                <p className="text-xs mt-1 font-semibold leading-relaxed">
+                  Aap ki candidate nomination Admin dwara REJECT kar di gayi hai. Reason ke liye University Administration se contact karain.
+                </p>
+              </div>
+            </div>
+
+            {/* MANDATORY CHECKBOX & CONVERSION BUTTON */}
+            <div className="bg-white p-4 rounded-xl border border-[#ffdad6] space-y-4">
+              <label className="flex items-start space-x-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rejectAcknowledged}
+                  onChange={(e) => setRejectAcknowledged(e.target.checked)}
+                  className="w-4 h-4 mt-0.5 text-[#ba1a1a] focus:ring-[#ba1a1a] border-[#ba1a1a] rounded accent-[#ba1a1a]"
+                />
+                <span className="text-xs font-bold text-[#ba1a1a] leading-snug">
+                  I understand my candidate nomination was rejected. Convert my profile back to standard Voter account and log out.
+                </span>
+              </label>
+
+              <button
+                onClick={handleConvertToVoter}
+                disabled={!rejectAcknowledged || converting}
+                className={`w-full py-3 rounded-xl font-extrabold text-xs shadow-md transition-all ${
+                  rejectAcknowledged && !converting
+                    ? 'bg-[#ba1a1a] hover:bg-[#93000a] text-white active:scale-98'
+                    : 'bg-[#e9e8e4] text-[#717a6d] cursor-not-allowed border border-[#c0c9bb]'
+                }`}
+              >
+                {converting ? 'Converting to Voter Profile...' : 'Next ➔ Convert Profile & Logout'}
+              </button>
+            </div>
+          </div>
+        ) : status === 'reupload_requested' ? (
+          <div className="p-5 rounded-2xl bg-[#fff8f1] border-2 border-[#ffdcc8] text-[#8a3b00] flex items-center space-x-3 shadow-xs">
+            <Sparkles className="w-6 h-6 text-[#d97706] shrink-0" />
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-wider">Re-upload Details Requested</h3>
+              <p className="text-xs mt-0.5 font-medium">
+                Admin ne aap ko candidate info update / re-upload ka option diya hai. Form unlock ho chuka hai, pehlay uni administration se confirm kar ke sari details enter kar ke dobara upload karain.
               </p>
             </div>
           </div>
@@ -236,7 +396,7 @@ export default function CandidateNominationPage() {
             <div>
               <h3 className="text-xs font-black uppercase tracking-wider">Waiting for Approval</h3>
               <p className="text-xs mt-0.5 font-medium">
-                Candidate information uploaded! Profile is locked pending Admin review. If approved, you will be an Approved Candidate; if rejected, your profile remains as a normal Voter.
+                Candidate information uploaded! Profile is locked pending Admin review.
               </p>
             </div>
           </div>

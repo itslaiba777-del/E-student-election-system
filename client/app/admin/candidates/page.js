@@ -150,6 +150,26 @@ export default function AdminCandidatesPage() {
     }
   };
 
+  const handleRequestReuploadCandidate = async () => {
+    if (!selectedCandidate) return;
+    setProcessing(true);
+
+    try {
+      await candidateAPI.updateStatus(selectedCandidate.id, 'reupload_requested');
+      setCandidates((prev) =>
+        prev.map((item) =>
+          item.id === selectedCandidate.id ? { ...item, status: 'reupload_requested' } : item
+        )
+      );
+      setSelectedCandidate((prev) => (prev ? { ...prev, status: 'reupload_requested' } : null));
+      alert('Re-upload / Edit request sent to candidate successfully!');
+    } catch (err) {
+      console.warn('API reupload request fallback:', err);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   return (
     <div className="bg-[#faf9f5] min-h-screen text-[#1b1c1a] font-sans flex">
       {/* Sidebar Navigation */}
@@ -317,6 +337,17 @@ export default function AdminCandidatesPage() {
               }`}
             >
               Rejected ({candidates.filter((c) => c.status === 'rejected').length})
+            </button>
+
+            <button
+              onClick={() => setActiveTab('reupload_requested')}
+              className={`pb-3 text-xs font-bold transition-colors border-b-2 whitespace-nowrap ${
+                activeTab === 'reupload_requested'
+                  ? 'border-[#00450d] text-[#00450d]'
+                  : 'border-transparent text-[#717a6d] hover:text-[#1b1c1a]'
+              }`}
+            >
+              Re-upload Requested ({candidates.filter((c) => c.status === 'reupload_requested').length})
             </button>
           </div>
 
@@ -587,7 +618,7 @@ export default function AdminCandidatesPage() {
             </div>
 
             {/* Drawer Footer Actions (Conditioned on canApprove permission) */}
-            <div className="p-6 border-t border-[#c0c9bb] bg-[#faf9f5] flex items-center space-x-3">
+            <div className="p-4 border-t border-[#c0c9bb] bg-[#faf9f5] flex items-center space-x-2">
               {canApprove ? (
                 <>
                   <button
@@ -597,7 +628,17 @@ export default function AdminCandidatesPage() {
                       selectedCandidate.status === 'rejected' ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                   >
-                    Reject Application
+                    Reject
+                  </button>
+
+                  <button
+                    onClick={handleRequestReuploadCandidate}
+                    disabled={selectedCandidate.status === 'reupload_requested'}
+                    className={`flex-1 h-11 bg-[#f59e0b] hover:bg-[#d97706] text-white font-bold text-xs rounded-xl shadow-xs transition-all ${
+                      selectedCandidate.status === 'reupload_requested' ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    Request Re-upload
                   </button>
 
                   <button
@@ -607,12 +648,12 @@ export default function AdminCandidatesPage() {
                       selectedCandidate.status === 'approved' ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                   >
-                    Approve Candidate
+                    Approve
                   </button>
                 </>
               ) : (
                 <div className="w-full text-center text-xs text-[#717a6d] font-semibold italic py-2">
-                  View-Only Mode (Missing approval permission)
+                  View-Only Mode
                 </div>
               )}
             </div>
