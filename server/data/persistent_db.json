@@ -1,0 +1,169 @@
+{
+  "superadmins": [
+    {
+      "id": 1,
+      "name": "superadmin",
+      "email": "superadmin@system.com",
+      "password_hash": "$2b$10$pnM5vG1srZ1FokGv0dGdje2.MmdqroQQg6E4OAETlycj2k.9gGWkG"
+    }
+  ],
+  "admins": [
+    {
+      "id": 1,
+      "name": "Department Admin",
+      "email": "admin@university.edu",
+      "password_hash": "$2b$10$Ij5cz2mIaUT7fBly0NAqX.t4uuyqtcQwDSB0KNqz/tQ1MpojA2VKq",
+      "level": "university",
+      "university_id": 1,
+      "status": "active",
+      "can_approve_candidates": true,
+      "can_approve_students": true
+    }
+  ],
+  "system_settings": [
+    {
+      "id": 1,
+      "university_name": "COMSATS University Islamabad",
+      "campus_name": "Main Campus",
+      "logo_url": "/uploads/default-logo.png",
+      "registration_number_pattern": "^[A-Z]{2,4}-[0-9]{4}-[0-9]{3,5}$",
+      "support_email": "support@campusvote.edu",
+      "emergency_phone": "+1 (555) 012-3456",
+      "min_candidate_cgpa": 3.0
+    }
+  ],
+  "universities": [
+    {
+      "id": 1,
+      "university_name": "COMSATS University Islamabad",
+      "logo_url": "/uploads/default-logo.png"
+    }
+  ],
+  "faculties": [
+    { "id": 1, "faculty_name": "Department of Computer Science", "university_id": 1 },
+    { "id": 2, "faculty_name": "Department of Software Engineering", "university_id": 1 },
+    { "id": 3, "faculty_name": "Department of Electrical Engineering", "university_id": 1 },
+    { "id": 4, "faculty_name": "Department of Business Administration", "university_id": 1 }
+  ],
+  "departments": [
+    { "id": 1, "department_name": "Department of Computer Science", "department_code": "CS", "faculty_id": 1, "university_id": 1 },
+    { "id": 2, "department_name": "Department of Software Engineering", "department_code": "SE", "faculty_id": 2, "university_id": 1 },
+    { "id": 3, "department_name": "Department of Electrical Engineering", "department_code": "EE", "faculty_id": 3, "university_id": 1 },
+    { "id": 4, "department_name": "Department of Business Administration", "department_code": "BA", "faculty_id": 4, "university_id": 1 }
+  ],
+  "programs": [
+    { "id": 1, "program_name": "BS Computer Science", "department_id": 1 },
+    { "id": 2, "program_name": "BS Artificial Intelligence", "department_id": 1 },
+    { "id": 3, "program_name": "BS Cyber Security", "department_id": 1 },
+    { "id": 4, "program_name": "BS Software Engineering", "department_id": 2 },
+    { "id": 5, "program_name": "BS Electrical Engineering", "department_id": 3 },
+    { "id": 6, "program_name": "BBA Business Administration", "department_id": 4 }
+  ],
+  "student_records": [
+    {
+      "id": 1,
+      "university_id": 1,
+      "cnic": "4567898765",
+      "registration_number": "FA22BCS056",
+      "full_name": "Abdullah",
+      "father_name": "Muhammad Akram",
+      "dob": "2002-05-14",
+      "faculty_id": 3,
+      "faculty_name": "Department of Electrical Engineering",
+      "department_id": 3,
+      "department_name": "Department of Electrical Engineering",
+      "program_id": 5,
+      "program_name": "BS Electrical Engineering"
+    },
+    {
+      "id": 2,
+      "university_id": 1,
+      "cnic": "35202-1234567-1",
+      "registration_number": "FA21-BCS-042",
+      "full_name": "Hamza Ahmed",
+      "father_name": "Ahmed Hassan",
+      "dob": "2001-08-20",
+      "faculty_id": 1,
+      "faculty_name": "Department of Computer Science",
+      "department_id": 1,
+      "department_name": "Department of Computer Science",
+      "program_id": 1,
+      "program_name": "BS Computer Science"
+    }
+  ],
+  "students": [
+    {
+      "id": 1,
+      "full_name": "Abdullah",
+      "father_name": "Muhammad Akram",
+      "cnic": "4567898765",
+      "registration_number": "FA22BCS056",
+      "mobile_number": "03096932637",
+      "user_role": "candidate",
+      "university_id": 1,
+      "faculty_id": 3,
+      "faculty_name": "Department of Electrical Engineering",
+      "department_id": 3,
+      "department_name": "Department of Electrical Engineering",
+      "program_id": 5,
+      "program_name": "BS Electrical Engineering",
+      "batch": "2022-2026",
+      "semester": "6th",
+      "cgpa": 3.3,
+      "email": "abdullahakram.official.810@gmail.com",
+      "password_hash": "$2b$10$.T8.el.H4I0YlLWX4drwyO1QBm2aiZks7O68s7xFeURbGtWjzOqS2",
+      "profile_image_url": "/uploads/profile_pics/profile_1791117829023_870.jpg",
+      "party_name": "Insaaf Students",
+      "symbol_url": "/uploads/symbol-1791118066767-920278776.png",
+      "manifesto": "Dedicated to student welfare and academic excellence.",
+      "status": "active",
+      "created_at": "2026-10-04T12:47:09.000Z"
+    }
+  ],
+  "candidates": [
+    {
+      "id": 1,
+      "name": "Abdullah",
+      "party": "Insaaf Students",
+      "slogan": "Dedication & Progress",
+      "motto": "Youth Leadership",
+      "bio": "BS Electrical Engineering student candidate.",
+      "manifesto": "Dedicated to student welfare and academic excellence.",
+      "experience": "Student Society Leader",
+      "photo_url": "/uploads/photo-1791118066743-190751905.png",
+      "symbol_image_url": "/uploads/symbol-1791118066767-920278776.png",
+      "faculty_id": 3,
+      "department_id": 3,
+      "department_name": "Department of Electrical Engineering",
+      "program_id": 5,
+      "election_id": 1,
+      "status": "pending",
+      "created_at": "2026-10-04T12:47:46.000Z"
+    }
+  ],
+  "elections": [
+    {
+      "id": 1,
+      "title": "Fall 2026 General Election",
+      "position_title": "President",
+      "total_seats": 20,
+      "university_id": 1,
+      "scope": "university-wide",
+      "scope_type": "all_departments",
+      "department_id": null,
+      "min_semester": 3,
+      "min_cgpa_criteria": 3.0,
+      "terms_and_conditions": "Candidates must be active students with clean disciplinary record.",
+      "candidate_apply_start": "2026-07-01T00:00:00.000Z",
+      "candidate_apply_end": "2026-12-31T23:59:59.000Z",
+      "voter_register_start": "2026-07-01T00:00:00.000Z",
+      "voter_register_end": "2026-12-31T23:59:59.000Z",
+      "voting_start": "2026-07-01T00:00:00.000Z",
+      "voting_end": "2026-12-31T23:59:59.000Z",
+      "status": "active",
+      "created_at": "2026-10-04T10:00:00.000Z"
+    }
+  ],
+  "votes": [],
+  "election_schedule_logs": []
+}

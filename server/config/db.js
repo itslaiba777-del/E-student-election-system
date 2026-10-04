@@ -125,11 +125,50 @@ const memoryDb = {
   votes: [],
 };
 
+const fs = require('fs');
+const path = require('path');
+const DB_FILE_PATH = path.join(__dirname, '../data/persistent_db.json');
+
+const persistToDisk = () => {
+  try {
+    const dir = path.dirname(DB_FILE_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(DB_FILE_PATH, JSON.stringify(memoryDb, null, 2), 'utf8');
+  } catch (err) {
+    console.warn('Persistent DB write warning:', err.message);
+  }
+};
+
+const loadFromDisk = () => {
+  try {
+    if (fs.existsSync(DB_FILE_PATH)) {
+      const content = fs.readFileSync(DB_FILE_PATH, 'utf8');
+      const loaded = JSON.parse(content);
+      Object.assign(memoryDb, loaded);
+      console.log('✅ Persistent Database loaded from disk:', {
+        students: memoryDb.students?.length || 0,
+        candidates: memoryDb.candidates?.length || 0,
+        admins: memoryDb.admins?.length || 0,
+        elections: memoryDb.elections?.length || 0,
+      });
+    } else {
+      persistToDisk();
+    }
+  } catch (err) {
+    console.warn('Persistent DB load error:', err.message);
+  }
+};
+
+// Auto-load persistent database from disk on startup
+loadFromDisk();
+
 // Initialize synchronous bcrypt hash for fallback
 (async () => {
   try {
-    const hashSuper = await bcrypt.hash('superadmin123', 10);
-    memoryDb.superadmins[0].password_hash = hashSuper;
+    if (memoryDb.superadmins && memoryDb.superadmins[0] && !memoryDb.superadmins[0].password_hash) {
+      const hashSuper = await bcrypt.hash('superadmin123', 10);
+      memoryDb.superadmins[0].password_hash = hashSuper;
+    }
   } catch (e) {}
 })();
 
@@ -143,16 +182,8 @@ pool.on('error', (err) => {
   isDbConnected = false;
 });
 
-const safeQuery = async (text, params = []) => {
-  try {
-    const res = await pool.query(text, params);
-    isDbConnected = true;
-    return res;
-  } catch (err) {
-    // If remote connection fails, handle with safe memory fallback
-    const queryStr = text.trim().toLowerCase();
-
-    // 1. SELECT COUNT
+const handleMemoryQuery = (queryStr, text, params) => {
+  // 1. SELECT COUNT
     if (queryStr.startsWith('select count(*)')) {
       if (queryStr.includes('from superadmins')) return { rows: [{ count: memoryDb.superadmins.length }] };
       if (queryStr.includes('from universities')) return { rows: [{ count: memoryDb.universities.length }] };
@@ -599,6 +630,24 @@ const safeQuery = async (text, params = []) => {
     }
 
     return { rows: [] };
+};
+
+const safeQuery = async (text, params = []) => {
+  try {
+    const res = await pool.query(text, params);
+    isDbConnected = true;
+    return res;
+  } catch (err) {
+    const queryStr = text.trim().toLowerCase();
+    const res = handleMemoryQuery(queryStr, text, params);
+    if (
+      queryStr.startsWith('insert') ||
+      queryStr.startsWith('update') ||
+      queryStr.startsWith('delete')
+    ) {
+      persistToDisk();
+    }
+    return res;
   }
 };
 
