@@ -37,15 +37,32 @@ export function BrandingProvider({ children }) {
     }
   };
 
-  const isConfigured = !!(settings.university_name && settings.university_name.trim());
-  const universityName = isConfigured ? settings.university_name.trim() : 'E-Election System';
-  const campusName = settings.campus_name || '';
-  const logoUrl = settings.logo_url
-    ? settings.logo_url.startsWith('http')
-      ? settings.logo_url
-      : `http://localhost:5000${settings.logo_url}`
+  const uniNameStr = typeof settings.university_name === 'string'
+    ? settings.university_name.trim()
+    : (settings.university_name && typeof settings.university_name === 'object' && settings.university_name.university_name)
+      ? String(settings.university_name.university_name).trim()
+      : (settings.university_name ? String(settings.university_name).trim() : '');
+
+  const isConfigured = !!uniNameStr;
+  const universityName = isConfigured ? uniNameStr : 'E-Election System';
+  const campusName = typeof settings.campus_name === 'string' ? settings.campus_name : (settings.campus_name ? String(settings.campus_name) : '');
+  
+  const logoUrlStr = typeof settings.logo_url === 'string' 
+    ? settings.logo_url 
+    : (settings.logo_url && typeof settings.logo_url === 'object' && settings.logo_url.logo_url)
+      ? String(settings.logo_url.logo_url)
+      : (settings.logo_url ? String(settings.logo_url) : '');
+
+  const logoUrl = logoUrlStr
+    ? logoUrlStr.startsWith('http')
+      ? logoUrlStr
+      : `http://localhost:5000${logoUrlStr}`
     : '';
-  const registrationPattern = settings.registration_number_pattern || '^[A-Z]{2,4}-[0-9]{4}-[0-9]{3,5}$';
+
+  const registrationPattern = typeof settings.registration_number_pattern === 'string'
+    ? settings.registration_number_pattern
+    : '^[A-Z]{2,4}-[0-9]{4}-[0-9]{3,5}$';
+
   const systemTitle = isConfigured ? `${universityName} E-Election System` : 'E-Election System';
 
   return (
