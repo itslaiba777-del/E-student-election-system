@@ -301,6 +301,7 @@ const getAllStudents = async (req, res) => {
        LEFT JOIN universities u ON s.university_id = u.id
        LEFT JOIN departments d ON s.department_id = d.id
        LEFT JOIN programs p ON s.program_id = p.id
+       WHERE s.user_role = 'voter' OR s.user_role IS NULL
        ORDER BY s.created_at DESC`
     );
     return res.status(200).json({ students: result.rows });

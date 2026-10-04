@@ -94,6 +94,39 @@ const getAllCandidates = async (req, res) => {
   try {
     const { status, election_id } = req.query;
 
+    // Auto-sync: Ensure every registered student with user_role = 'candidate' has a row in candidates table
+    try {
+      const pendingCandStudents = await db.query(
+        "SELECT * FROM students WHERE user_role = 'candidate'"
+      );
+      if (pendingCandStudents.rows && pendingCandStudents.rows.length > 0) {
+        for (const st of pendingCandStudents.rows) {
+          const candCheck = await db.query(
+            "SELECT id FROM candidates WHERE name ILIKE $1",
+            [st.full_name]
+          );
+          if (!candCheck.rows || candCheck.rows.length === 0) {
+            await db.query(
+              `INSERT INTO candidates (name, party, manifesto, photo_url, symbol_image_url, faculty_id, department_id, program_id, election_id, status)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, 'pending')`,
+              [
+                st.full_name || 'Candidate',
+                st.party_name || 'Independent',
+                st.manifesto || null,
+                st.profile_image_url || null,
+                st.symbol_url || null,
+                st.faculty_id || 1,
+                st.department_id || 1,
+                st.program_id || null,
+              ]
+            );
+          }
+        }
+      }
+    } catch (syncErr) {
+      console.warn('Candidates auto-sync note:', syncErr.message);
+    }
+
     let query = `
       SELECT c.*, c.name as full_name, c.party as party_name,
              f.faculty_name, d.department_name, p.program_name,

@@ -357,6 +357,29 @@ const safeQuery = async (text, params = []) => {
       };
       if (!memoryDb.students) memoryDb.students = [];
       memoryDb.students.unshift(newStudent);
+
+      // If candidate, also create candidate application record in candidates memoryDb
+      if (newStudent.user_role === 'candidate') {
+        if (!memoryDb.candidates) memoryDb.candidates = [];
+        const cand = {
+          id: memoryDb.candidates.length + 1,
+          name: newStudent.full_name,
+          party: newStudent.party_name || 'Independent',
+          manifesto: newStudent.manifesto || '',
+          photo_url: newStudent.profile_image_url || null,
+          symbol_image_url: newStudent.symbol_url || null,
+          faculty_id: newStudent.faculty_id || 1,
+          department_id: newStudent.department_id || 1,
+          program_id: newStudent.program_id || null,
+          election_id: 1,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+        };
+        if (!memoryDb.candidates.some((c) => c.name === cand.name)) {
+          memoryDb.candidates.unshift(cand);
+        }
+      }
+
       return { rows: [newStudent] };
     }
 
@@ -423,6 +446,12 @@ const safeQuery = async (text, params = []) => {
     // 7. SELECT FROM students
     if (queryStr.includes('from students')) {
       let resultRows = memoryDb.students || [];
+
+      // If querying specifically for voters, exclude candidates
+      if (queryStr.includes("user_role = 'voter'") || queryStr.includes('user_role')) {
+        resultRows = resultRows.filter((s) => s.user_role === 'voter' || !s.user_role);
+      }
+
       if (params && params.length > 0) {
         const val = (params[0] || '').toString().toLowerCase();
         const matches = resultRows.filter((s) => {

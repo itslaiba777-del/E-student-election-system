@@ -190,6 +190,9 @@ export default function SuperAdminStudentsPage() {
   };
 
   const filteredStudents = students.filter((s) => {
+    // Exclude candidates from Registered Voters list
+    if (s.user_role === 'candidate') return false;
+
     const term = searchQuery.toLowerCase();
     const name = (s.full_name || '').toLowerCase();
     const reg = (s.registration_number || '').toLowerCase();

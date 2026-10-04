@@ -331,11 +331,41 @@ const registerStudent = async (req, res) => {
     ];
 
     const result = await db.query(insertQuery, values);
+    const newStudent = result.rows[0];
+
+    // If registered as candidate, create candidate application entry for Admin review
+    if (role === 'candidate') {
+      try {
+        let electionId = 1;
+        const elecRes = await db.query("SELECT id FROM elections WHERE status != 'archived' ORDER BY created_at DESC LIMIT 1");
+        if (elecRes.rows && elecRes.rows.length > 0) {
+          electionId = elecRes.rows[0].id;
+        }
+
+        await db.query(
+          `INSERT INTO candidates (name, party, manifesto, photo_url, symbol_image_url, faculty_id, department_id, program_id, election_id, status)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending')`,
+          [
+            full_name ? full_name.trim() : 'Candidate',
+            party_name ? party_name.trim() : 'Independent',
+            manifesto ? manifesto.trim() : null,
+            profileImageUrl || null,
+            symbol_url ? symbol_url.trim() : null,
+            resolvedFacultyId || 1,
+            resolvedDeptId || 1,
+            program_id || null,
+            electionId,
+          ]
+        );
+      } catch (candErr) {
+        console.warn('Candidate application row creation warning:', candErr.message);
+      }
+    }
 
     return res.status(201).json({
       message: `${role === 'candidate' ? 'Candidate' : 'Voter'} registered successfully. You can now log in.`,
-      user: result.rows[0],
-      student: result.rows[0],
+      user: newStudent,
+      student: newStudent,
     });
   } catch (error) {
     console.error('Register student error:', error);

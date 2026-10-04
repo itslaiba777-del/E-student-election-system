@@ -52,7 +52,7 @@ const getStudentsList = async (req, res) => {
   try {
     const { level, university_id, faculty_id, department_id } = req.adminScope || { level: 'university', university_id: 1 };
 
-    let whereClauses = ['s.university_id = $1'];
+    let whereClauses = ['s.university_id = $1', "(s.user_role = 'voter' OR s.user_role IS NULL)"];
     let params = [university_id];
 
     if (level === 'faculty' && faculty_id) {

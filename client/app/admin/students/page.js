@@ -185,6 +185,9 @@ export default function AdminStudentVerificationPage() {
   };
 
   const filteredStudents = students.filter((s) => {
+    // Exclude candidates from Student Voters roster
+    if (s.user_role === 'candidate') return false;
+
     const term = searchQuery.toLowerCase();
     const matchesFilter = activeFilter === 'all' || s.status === activeFilter;
     const matchesSearch =
