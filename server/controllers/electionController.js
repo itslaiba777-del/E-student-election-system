@@ -58,6 +58,12 @@ const createElection = async (req, res) => {
     ];
 
     const result = await db.query(query, values);
+
+    // Sync min_candidate_cgpa with system_settings
+    try {
+      await db.query(`UPDATE system_settings SET min_candidate_cgpa = $1 WHERE id = 1`, [parseFloat(min_cgpa_criteria || 3.0)]);
+    } catch (err) {}
+
     // Log initial schedule entry
     if (voting_start && voting_end) {
       await db.query(
@@ -299,6 +305,12 @@ const updateElectionSchedule = async (req, res) => {
         election_id,
       ]
     );
+
+    if (min_cgpa_criteria) {
+      try {
+        await db.query(`UPDATE system_settings SET min_candidate_cgpa = $1 WHERE id = 1`, [parseFloat(min_cgpa_criteria)]);
+      } catch (err) {}
+    }
 
     // Determine action type for audit logging
     const prevStart = electionCheck.rows[0].voting_start ? new Date(electionCheck.rows[0].voting_start) : null;

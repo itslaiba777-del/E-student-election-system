@@ -181,16 +181,31 @@ const registerStudent = async (req, res) => {
     const trimmedEmail = email.toLowerCase().trim();
     const role = (user_role && ['voter', 'candidate'].includes(user_role)) ? user_role : 'voter';
 
-    // Check system min_candidate_cgpa setting if candidate
+    // Check dynamic candidate CGPA criteria set by Admin for the election
     if (role === 'candidate') {
-      let minCgpa = 3.5;
+      let minCgpa = 3.0;
       try {
-        const sysSettings = await db.query('SELECT min_candidate_cgpa FROM system_settings LIMIT 1');
-        if (sysSettings.rows.length > 0 && sysSettings.rows[0].min_candidate_cgpa) {
-          minCgpa = parseFloat(sysSettings.rows[0].min_candidate_cgpa);
+        // 1. Fetch minimum CGPA criteria configured by Admin for the latest / active election
+        const elecRes = await db.query(
+          'SELECT min_cgpa_criteria FROM elections WHERE status != $1 ORDER BY created_at DESC LIMIT 1',
+          ['archived']
+        );
+        if (
+          elecRes.rows &&
+          elecRes.rows.length > 0 &&
+          elecRes.rows[0].min_cgpa_criteria !== undefined &&
+          elecRes.rows[0].min_cgpa_criteria !== null
+        ) {
+          minCgpa = parseFloat(elecRes.rows[0].min_cgpa_criteria);
+        } else {
+          // 2. Fallback to system_settings
+          const sysSettings = await db.query('SELECT min_candidate_cgpa FROM system_settings LIMIT 1');
+          if (sysSettings.rows && sysSettings.rows.length > 0 && sysSettings.rows[0].min_candidate_cgpa) {
+            minCgpa = parseFloat(sysSettings.rows[0].min_candidate_cgpa);
+          }
         }
       } catch (err) {
-        console.warn('Could not read min_candidate_cgpa, using default 3.5');
+        console.warn('Could not read election min_cgpa_criteria:', err);
       }
 
       const numCgpa = parseFloat(cgpa || '0');

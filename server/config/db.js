@@ -42,6 +42,7 @@ const memoryDb = {
       registration_number_pattern: '^[A-Z]{2,4}-[0-9]{4}-[0-9]{3,5}$',
       support_email: 'support@campusvote.edu',
       emergency_phone: '+1 (555) 012-3456',
+      min_candidate_cgpa: 3.0,
     },
   ],
   universities: [
