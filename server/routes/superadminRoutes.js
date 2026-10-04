@@ -36,7 +36,7 @@ router.put('/students/:id/status', updateStudentDetails);
 router.put('/students/:id/password', updateStudentPassword);
 router.delete('/students/:id', deleteStudent);
 
-router.get('/candidates', getAllCandidates);
+router.get('/candidates', getApprovedCandidates);
 
 module.exports = router;
 
