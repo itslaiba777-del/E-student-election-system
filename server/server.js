@@ -40,6 +40,21 @@ app.use('/api/candidates', candidateRoutes);
 app.use('/api/elections', electionRoutes);
 app.use('/api/votes', voteRoutes);
 
+// Root landing endpoint
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'success',
+    message: 'University Student E-Election System Backend API is live and running!',
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth',
+      elections: '/api/elections',
+      candidates: '/api/candidates',
+      students: '/api/students'
+    }
+  });
+});
+
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
   try {
