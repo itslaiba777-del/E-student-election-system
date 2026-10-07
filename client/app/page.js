@@ -26,7 +26,7 @@ import {
   EyeOff,
   Info
 } from 'lucide-react';
-import { authAPI, studentAPI, universityAPI, academicAPI } from '../lib/api';
+import { authAPI, studentAPI, universityAPI, academicAPI, electionAPI } from '../lib/api';
 import FaceCapture from '../components/FaceCapture';
 import { useBranding } from '../context/BrandingContext';
 
@@ -158,10 +158,10 @@ export default function UnifiedAuthHub() {
 
   const fetchActiveElection = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/elections');
-      const data = await res.json();
-      if (data.elections && data.elections.length > 0) {
-        setActiveElection(data.elections[0]);
+      const res = await electionAPI.getAll();
+      const elections = res.data?.elections || res.data || [];
+      if (elections && elections.length > 0) {
+        setActiveElection(elections[0]);
       }
     } catch (e) {}
   };

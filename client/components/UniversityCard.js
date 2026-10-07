@@ -1,9 +1,12 @@
 import Link from 'next/link';
 import { Building2, ArrowRight } from 'lucide-react';
+import { SERVER_BASE_URL } from '../lib/api';
 
 export default function UniversityCard({ university, onSelect }) {
   const logoSrc = university.logo_url
-    ? `http://localhost:5000${university.logo_url}`
+    ? university.logo_url.startsWith('http')
+      ? university.logo_url
+      : `${SERVER_BASE_URL}${university.logo_url}`
     : null;
 
   return (

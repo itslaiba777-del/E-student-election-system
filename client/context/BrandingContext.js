@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const SERVER_URL = API_BASE_URL.replace(/\/api\/?$/, '');
 
 const BrandingContext = createContext({
   universityName: 'E-Election System',
@@ -56,7 +57,7 @@ export function BrandingProvider({ children }) {
   const logoUrl = logoUrlStr
     ? logoUrlStr.startsWith('http')
       ? logoUrlStr
-      : `http://localhost:5000${logoUrlStr}`
+      : `${SERVER_URL}${logoUrlStr}`
     : '';
 
   const registrationPattern = typeof settings.registration_number_pattern === 'string'
