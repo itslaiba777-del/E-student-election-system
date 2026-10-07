@@ -18,9 +18,11 @@ const regions = [
   'aws-0-me-central-1.pooler.supabase.com'
 ];
 
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+
 async function checkPooler(host) {
-  const password = 'itslaiba777%40';
-  const connStr = `postgresql://postgres.ohdqjnvsakiiojekuciv:${password}@${host}:6543/postgres`;
+  const password = process.env.DB_PASSWORD || 'password';
+  const connStr = process.env.DATABASE_URL || `postgresql://postgres.ohdqjnvsakiiojekuciv:${password}@${host}:6543/postgres`;
   
   const client = new Client({
     connectionString: connStr,

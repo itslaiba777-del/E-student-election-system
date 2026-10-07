@@ -8,7 +8,7 @@ const getSuperadminDashboard = async (req, res) => {
   try {
     const totalUniversities = await db.query('SELECT COUNT(*) FROM universities');
     const totalAdmins = await db.query('SELECT COUNT(*) FROM admins');
-    const totalStudents = await db.query('SELECT COUNT(*) FROM students');
+    const totalStudents = await db.query('SELECT COUNT(*) FROM voters');
     const totalElections = await db.query('SELECT COUNT(*) FROM elections');
 
     return res.status(200).json({
@@ -295,14 +295,13 @@ const updateSystemSettings = async (req, res) => {
 const getAllStudents = async (req, res) => {
   try {
     const result = await db.query(
-      `SELECT s.id, s.full_name, s.father_name, s.email, s.cnic, s.registration_number, s.mobile_number, s.profile_image_url, s.batch, s.semester, s.user_role, s.status, s.created_at,
+      `SELECT v.id, v.full_name, v.father_name, v.email, v.cnic, v.registration_number, v.mobile_number, v.profile_image_url, v.batch, v.semester, 'voter' as user_role, v.status, v.created_at,
               u.university_name, d.department_name, p.program_name
-       FROM students s
-       LEFT JOIN universities u ON s.university_id = u.id
-       LEFT JOIN departments d ON s.department_id = d.id
-       LEFT JOIN programs p ON s.program_id = p.id
-       WHERE s.user_role = 'voter' OR s.user_role IS NULL
-       ORDER BY s.created_at DESC`
+       FROM voters v
+       LEFT JOIN universities u ON v.university_id = u.id
+       LEFT JOIN departments d ON v.department_id = d.id
+       LEFT JOIN programs p ON v.program_id = p.id
+       ORDER BY v.created_at DESC`
     );
     return res.status(200).json({ students: result.rows });
   } catch (error) {

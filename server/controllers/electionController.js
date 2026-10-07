@@ -137,6 +137,61 @@ const getElections = async (req, res) => {
 };
 
 /**
+ * Get Election by ID (includes approved candidates list for ballot)
+ */
+const getElectionById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const electionRes = await db.query(
+      `SELECT e.*, u.university_name, d.department_name
+       FROM elections e
+       LEFT JOIN universities u ON e.university_id = u.id
+       LEFT JOIN departments d ON e.department_id = d.id
+       WHERE e.id = $1`,
+      [id]
+    );
+
+    if (electionRes.rows.length === 0) {
+      return res.status(404).json({ message: 'Election not found.' });
+    }
+
+    const elec = electionRes.rows[0];
+    const now = new Date();
+    let currentStatus = elec.status;
+    if (elec.status !== 'closed') {
+      if (now >= new Date(elec.voting_start) && now <= new Date(elec.voting_end)) {
+        currentStatus = 'active';
+      } else if (now > new Date(elec.voting_end)) {
+        currentStatus = 'closed';
+      }
+    }
+    elec.calculated_status = currentStatus;
+
+    // Fetch approved candidates for this election
+    const candRes = await db.query(
+      `SELECT c.id, c.name as full_name, c.party, c.party as party_name, c.slogan, c.motto, c.manifesto,
+              c.bio, c.experience, c.photo_url, c.symbol_image_url, c.status, c.election_id,
+              e.position_title, d.department_name, f.faculty_name
+       FROM candidates c
+       JOIN elections e ON c.election_id = e.id
+       LEFT JOIN departments d ON c.department_id = d.id
+       LEFT JOIN faculties f ON c.faculty_id = f.id
+       WHERE c.election_id = $1 AND c.status = 'approved'
+       ORDER BY c.name ASC`,
+      [id]
+    );
+
+    return res.status(200).json({
+      election: elec,
+      candidates: candRes.rows || [],
+    });
+  } catch (error) {
+    console.error('Get election by id error:', error);
+    return res.status(500).json({ message: 'Server error fetching election details.' });
+  }
+};
+
+/**
  * Extend Voting Time (Enforces can_extend_voting_time permission)
  */
 const extendVotingTime = async (req, res) => {
@@ -366,6 +421,7 @@ const getScheduleLogs = async (req, res) => {
 module.exports = {
   createElection,
   getElections,
+  getElectionById,
   extendVotingTime,
   getElectionResults,
   updateElectionSchedule,

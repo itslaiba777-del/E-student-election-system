@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
-import { studentAPI } from '../../../lib/api';
+import { adminAPI } from '../../../lib/api';
 import AccessRestricted from '../../../components/AccessRestricted';
 import {
   LayoutDashboard,
@@ -57,16 +57,31 @@ export default function AdminStudentVerificationPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        try {
+          const u = JSON.parse(userStr);
+          if (u.role === 'admin' && u.permissions) {
+            if (u.permissions.can_view_students === false) {
+              setHasPermission(false);
+              return;
+            }
+          }
+        } catch (e) {}
+      }
+    }
     fetchStudents();
   }, []);
 
   const fetchStudents = async () => {
     try {
-      const res = await studentAPI.getAll();
+      const res = await adminAPI.getStudents();
       if (res.data?.students) {
         setStudents(res.data.students);
       }
     } catch (err) {
+      console.error('Fetch students error:', err);
       setStudents([]);
     }
   };
@@ -93,12 +108,7 @@ export default function AdminStudentVerificationPage() {
     setSubmitting(true);
     const newStatus = selectedStudent.status === 'deactivated' ? 'active' : 'deactivated';
     try {
-      const token = localStorage.getItem('token');
-      await axios.put(
-        `${API_BASE_URL}/admin/students/${selectedStudent.id}/status`,
-        { status: newStatus },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await adminAPI.updateStudentStatus(selectedStudent.id, newStatus);
 
       const updated = { ...selectedStudent, status: newStatus };
       setSelectedStudent(updated);
@@ -117,12 +127,7 @@ export default function AdminStudentVerificationPage() {
     if (!selectedStudent) return;
     setSubmitting(true);
     try {
-      const token = localStorage.getItem('token');
-      await axios.put(
-        `${API_BASE_URL}/admin/students/${selectedStudent.id}`,
-        editForm,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await adminAPI.updateStudentDetails(selectedStudent.id, editForm);
 
       const updated = { ...selectedStudent, ...editForm };
       setSelectedStudent(updated);
@@ -145,12 +150,7 @@ export default function AdminStudentVerificationPage() {
     }
     setSubmitting(true);
     try {
-      const token = localStorage.getItem('token');
-      await axios.put(
-        `${API_BASE_URL}/admin/students/${selectedStudent.id}/password`,
-        { password: newPassword },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await adminAPI.updateStudentPassword(selectedStudent.id, newPassword);
 
       setPassMessage('Password updated successfully for voter.');
       setNewPassword('');
@@ -169,10 +169,7 @@ export default function AdminStudentVerificationPage() {
     }
     setSubmitting(true);
     try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`${API_BASE_URL}/admin/students/${selectedStudent.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await adminAPI.deleteStudent(selectedStudent.id);
 
       setStudents((prev) => prev.filter((s) => s.id !== selectedStudent.id));
       setSelectedStudent(null);
@@ -197,6 +194,12 @@ export default function AdminStudentVerificationPage() {
       (s.email || '').toLowerCase().includes(term);
     return matchesFilter && matchesSearch;
   });
+
+  if (!hasPermission) {
+    return (
+      <AccessRestricted message="You do not have administrative permission to view or manage the Student Voters Roster." />
+    );
+  }
 
   return (
     <div className="bg-[#faf9f5] min-h-screen text-[#1b1c1a] font-sans flex">

@@ -88,6 +88,7 @@ export const academicAPI = {
 export const academicStructureAPI = academicAPI;
 
 export const candidateAPI = {
+  getAll: (params) => api.get('/candidates', { params }),
   getByElection: (electionId, status) => api.get(`/candidates/election/${electionId}`, { params: { status } }),
   getMyNomination: () => api.get('/candidates/my-nomination'),
   convertToVoter: () => api.post('/candidates/convert-to-voter'),
@@ -99,11 +100,13 @@ export const candidateAPI = {
     api.put(`/candidates/${candidateId}/details`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-  updateStatus: (candidateId, status) => api.put(`/candidates/${candidateId}/status`, { status }),
+  updateStatus: (candidateId, status, rejection_reason) =>
+    api.put(`/candidates/${candidateId}/status`, { status, rejection_reason }),
 };
 
 export const electionAPI = {
   getAll: (params) => api.get('/elections', { params }),
+  getById: (id) => api.get(`/elections/${id}`),
   create: (data) => api.post('/elections', data),
   extendTime: (id, new_voting_end) => api.put(`/elections/${id}/extend`, { new_voting_end }),
   getResults: (id) => api.get(`/elections/${id}/results`),
@@ -113,7 +116,13 @@ export const voteAPI = {
   requestOTP: (electionId) => api.post('/votes/request-otp', { election_id: electionId }),
   verifyOTP: (electionId, otpCode) => api.post('/votes/verify-otp', { election_id: electionId, otp_code: otpCode }),
   verifyFace: (electionId, faceDescriptor) => api.post('/votes/verify-face', { election_id: electionId, face_descriptor: faceDescriptor }),
-  castVote: (electionId, candidateId) => api.post('/votes/cast', { election_id: electionId, candidate_id: candidateId }),
+  getStatus: (electionId) => api.get(`/votes/status/${electionId}`),
+  castVote: (payloadOrElectionId, maybeCandidateId) => {
+    if (typeof payloadOrElectionId === 'object' && payloadOrElectionId !== null) {
+      return api.post('/votes/cast', payloadOrElectionId);
+    }
+    return api.post('/votes/cast', { election_id: payloadOrElectionId, candidate_id: maybeCandidateId });
+  },
 };
 
 export const superadminAPI = {
@@ -126,6 +135,9 @@ export const adminAPI = {
   getDashboard: () => api.get('/admins/dashboard'),
   getStudents: () => api.get('/admins/students'),
   updateStudentStatus: (studentId, status) => api.put(`/admins/students/${studentId}/status`, { status }),
+  updateStudentDetails: (studentId, data) => api.put(`/admins/students/${studentId}`, data),
+  updateStudentPassword: (studentId, password) => api.put(`/admins/students/${studentId}/password`, { password }),
+  deleteStudent: (studentId) => api.delete(`/admins/students/${studentId}`),
 };
 
 export default api;

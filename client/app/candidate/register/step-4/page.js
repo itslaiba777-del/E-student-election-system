@@ -15,7 +15,7 @@ import {
   Lock,
   ArrowRight,
 } from 'lucide-react';
-import { studentAPI, candidateAPI } from '../../../../lib/api';
+import { studentAPI } from '../../../../lib/api';
 
 export default function CandidateStep4ReviewSubmitPage() {
   const router = useRouter();
@@ -75,40 +75,39 @@ export default function CandidateStep4ReviewSubmitPage() {
       father_name: step2Data.father_name,
       mobile_number: step2Data.mobile_number,
       department_id: parseInt(step2Data.department_id || '1', 10),
+      faculty_id: step2Data.faculty_id ? parseInt(step2Data.faculty_id, 10) : undefined,
+      program_id: step2Data.program_id ? parseInt(step2Data.program_id, 10) : undefined,
+      batch: step2Data.batch || undefined,
+      semester: step2Data.semester ? parseInt(step2Data.semester, 10) : undefined,
+      cgpa: step2Data.cgpa || step1Data.cgpa || undefined,
       email: step2Data.email,
       password: step2Data.password,
       user_role: 'candidate',
       party_name: step2Data.party_name,
+      party_slogan: step2Data.party_slogan || '',
+      slogan: step2Data.party_slogan || '',
       symbol_url: step2Data.symbol_url,
       manifesto: step2Data.manifesto,
+      election_id: step2Data.election_id ? parseInt(step2Data.election_id, 10) : 1,
       face_encoding: capturedFaceImage || 'FACE_VECTOR_RECORDED',
     };
 
     try {
-      // 1. Register candidate user in DB
-      const res = await studentAPI.register(payload);
-      
-      // 2. Register nomination in candidate table if needed
-      try {
-        const formData = new FormData();
-        formData.append('name', step2Data.full_name);
-        formData.append('party', step2Data.party_name);
-        formData.append('manifesto', `[Slogan: ${step2Data.party_slogan || ''}] ${step2Data.manifesto || ''}`);
-        formData.append('faculty_id', '1');
-        formData.append('department_id', step2Data.department_id || '1');
-        formData.append('election_id', step2Data.election_id || '1');
-        await candidateAPI.nominate(formData);
-      } catch (nomErr) {
-        console.warn('Candidate table nomination insert warning:', nomErr);
+      // Register candidate user in DB (creates exactly 1 candidate record in candidates table)
+      await studentAPI.register(payload);
+
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('candidate_registration_step_1');
+        sessionStorage.removeItem('candidate_registration_step_2');
       }
 
       setLoading(false);
       router.push('/candidate/register/submitted');
     } catch (err) {
       console.error('Candidate registration error:', err);
-      // Fallback redirect for demonstration if simulated
+      const errMsg = err.response?.data?.message || err.message || 'Candidate registration failed. Please try again.';
+      setError(errMsg);
       setLoading(false);
-      router.push('/candidate/register/submitted');
     }
   };
 

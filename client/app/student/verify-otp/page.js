@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { authAPI } from '../../../lib/api';
+import { voteAPI } from '../../../lib/api';
 import { Lock, Timer, AlertTriangle, RefreshCw, ShieldCheck } from 'lucide-react';
 
 export default function VerifyOtpPage() {
@@ -23,6 +23,13 @@ export default function VerifyOtpPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [shake, setShake] = useState(false);
+
+  // Auto-request OTP on load
+  useEffect(() => {
+    voteAPI.requestOTP(electionId).catch((err) => {
+      console.warn('Auto request OTP error:', err.response?.data?.message || err.message);
+    });
+  }, [electionId]);
 
   // 5-Minute Timer Countdown
   useEffect(() => {
@@ -92,15 +99,17 @@ export default function VerifyOtpPage() {
     if (!isExpired) return;
 
     setLoading(true);
-    console.log('Generating fresh OTP code for student...');
-
-    setTimeout(() => {
+    try {
+      await voteAPI.requestOTP(electionId);
       setTimeLeft(300); // Reset timer to 5 minutes
       setIsExpired(false);
       setDigits(['', '', '', '', '', '']);
       setError(null);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to resend OTP.');
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   // Submit OTP Verification
@@ -118,30 +127,14 @@ export default function VerifyOtpPage() {
     setLoading(true);
     setError(null);
 
-    console.log('Submitting OTP verification:', {
-      election_id: electionId,
-      code: fullCode,
-      attempts_used: attemptsUsed + 1,
-    });
-
     try {
-      // API call placeholder / test logic
-      try {
-        await authAPI.verifyOtp({ otp: fullCode });
-      } catch (apiErr) {
-        console.warn('Backend API OTP verification fallback:', apiErr);
+      const res = await voteAPI.verifyOTP(electionId, fullCode);
+      if (res.data?.verification_token && typeof window !== 'undefined') {
+        sessionStorage.setItem(`vote_2fa_token_${electionId}`, res.data.verification_token);
       }
 
-      // For demonstration: test code "000000" simulates wrong code to test attempt limits
-      if (fullCode === '000000' || fullCode === '111111') {
-        throw new Error('Invalid OTP code.');
-      }
-
-      setTimeout(() => {
-        setLoading(false);
-        // Successful Verification -> Route to Face Verification Step
-        router.push(`/student/face-verify?election_id=${electionId}`);
-      }, 600);
+      // Successful Verification -> Route to Face Verification Step
+      router.push(`/student/face-verify?election_id=${electionId}`);
     } catch (err) {
       setLoading(false);
       const nextAttempts = attemptsUsed + 1;
@@ -149,11 +142,11 @@ export default function VerifyOtpPage() {
       triggerShake();
 
       if (nextAttempts >= 2) {
-        // Log election lockout API
         console.warn('Student permanently locked out of election ID', electionId, 'due to max OTP failures.');
         router.push('/student/vote-locked/otp-failed');
       } else {
-        setError('Incorrect verification code. Please check your email and try again.');
+        const errorMsg = err.response?.data?.message || 'Incorrect verification code. Please check your email and try again.';
+        setError(errorMsg);
         setDigits(['', '', '', '', '', '']);
         inputRefs.current[0]?.focus();
       }

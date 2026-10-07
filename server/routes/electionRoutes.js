@@ -1,11 +1,22 @@
 const express = require('express');
 const router = express.Router();
-const { createElection, getElections, extendVotingTime, getElectionResults, updateElectionSchedule, getScheduleLogs } = require('../controllers/electionController');
+const {
+  createElection,
+  getElections,
+  getElectionById,
+  extendVotingTime,
+  getElectionResults,
+  updateElectionSchedule,
+  getScheduleLogs,
+} = require('../controllers/electionController');
 const { verifyToken, requireRole } = require('../middleware/authMiddleware');
 const requireAdminPermission = require('../middleware/permissionMiddleware');
 
 // Get elections list
 router.get('/', getElections);
+
+// Get single election by ID with candidates
+router.get('/:id', getElectionById);
 
 // Create election (SuperAdmin or Admin)
 router.post('/', verifyToken, requireRole(['superadmin', 'admin']), createElection);
@@ -25,12 +36,11 @@ router.put(
   extendVotingTime
 );
 
-// Get election results (Available ONLY when election is closed and permitted)
+// Get election results (Available when election is closed)
 router.get(
   '/:election_id/results',
   verifyToken,
-  requireRole(['admin', 'superadmin', 'student']),
-  requireAdminPermission('can_view_results'),
+  requireRole(['admin', 'superadmin', 'student', 'voter', 'candidate']),
   getElectionResults
 );
 

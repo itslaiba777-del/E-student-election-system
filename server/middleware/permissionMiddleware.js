@@ -8,8 +8,24 @@ const db = require('../config/db');
 const requireAdminPermission = (requiredPermission, requiredLevels = []) => {
   return async (req, res, next) => {
     try {
-      // SuperAdmin automatically bypasses specific admin permission checks
+      // SuperAdmin automatically bypasses specific admin permission checks with full university scope
       if (req.user && req.user.role === 'superadmin') {
+        req.adminScope = {
+          id: req.user.id,
+          level: 'university',
+          university_id: 1,
+          faculty_id: null,
+          department_id: null,
+          permissions: {
+            can_view_candidates: true,
+            can_approve_candidates: true,
+            can_view_students: true,
+            can_approve_students: true,
+            can_view_results: true,
+            can_submit_results: true,
+            can_extend_voting_time: true,
+          },
+        };
         return next();
       }
 

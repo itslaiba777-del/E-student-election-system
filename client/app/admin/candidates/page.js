@@ -27,11 +27,10 @@ import {
 } from 'lucide-react';
 
 export default function AdminCandidatesPage() {
-  // Admin Session & Permission State
   const [adminPermissions, setAdminPermissions] = useState([
     'manage_candidates',
     'can_approve_candidates',
-    'verify_students',
+    'can_view_candidates',
   ]);
   const [hasPermission, setHasPermission] = useState(true);
 
@@ -40,6 +39,21 @@ export default function AdminCandidatesPage() {
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('restricted') === 'true') {
         setHasPermission(false);
+      }
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          if (user.role === 'admin' && user.permissions) {
+            if (user.permissions.can_view_candidates === false) {
+              setHasPermission(false);
+            }
+            const perms = [];
+            if (user.permissions.can_view_candidates) perms.push('can_view_candidates');
+            if (user.permissions.can_approve_candidates) perms.push('can_approve_candidates');
+            setAdminPermissions(perms);
+          }
+        } catch (e) {}
       }
     }
   }, []);
@@ -56,12 +70,12 @@ export default function AdminCandidatesPage() {
 
   // Election Window State
   const [electionWindow, setElectionWindow] = useState({
-    apply_start: '2026-07-01',
-    apply_end: '2026-07-25', // Passed -> Closed
-    title: 'Fall 2026 General Election',
+    apply_start: null,
+    apply_end: null,
+    title: 'University Election',
   });
 
-  const isWindowClosed = new Date() > new Date(electionWindow.apply_end);
+  const isWindowClosed = electionWindow.apply_end ? new Date() > new Date(electionWindow.apply_end) : false;
 
   const [candidates, setCandidates] = useState([]);
 
@@ -76,8 +90,21 @@ export default function AdminCandidatesPage() {
         setCandidates(res.data.candidates);
       }
     } catch (err) {
+      console.warn('Fetch candidates error:', err);
       setCandidates([]);
     }
+
+    try {
+      const elRes = await electionAPI.getAll();
+      if (elRes.data?.elections && elRes.data.elections.length > 0) {
+        const elec = elRes.data.elections[0];
+        setElectionWindow({
+          apply_start: elec.candidate_apply_start,
+          apply_end: elec.candidate_apply_end,
+          title: elec.title,
+        });
+      }
+    } catch (e) {}
   };
 
   const canApprove = adminPermissions.includes('can_approve_candidates') || adminPermissions.includes('manage_candidates');
@@ -97,17 +124,19 @@ export default function AdminCandidatesPage() {
 
     try {
       await candidateAPI.updateStatus(selectedCandidate.id, 'approved');
-    } catch (err) {
-      console.warn('API approve fallback:', err);
-    } finally {
       setCandidates((prev) =>
         prev.map((item) =>
           item.id === selectedCandidate.id ? { ...item, status: 'approved' } : item
         )
       );
       setSelectedCandidate((prev) => (prev ? { ...prev, status: 'approved' } : null));
-      setProcessing(false);
       setIsApproveModalOpen(false);
+    } catch (err) {
+      console.error('Approve candidate error:', err);
+      const errMsg = err.response?.data?.message || 'Failed to approve candidate. Please check quota or permissions.';
+      alert(`Approval Error: ${errMsg}`);
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -115,22 +144,16 @@ export default function AdminCandidatesPage() {
     if (!selectedCandidate) return;
     setProcessing(true);
 
+    const reason = rejectReason || 'Application preconditions or prerequisite signatures not satisfied.';
     try {
-      await candidateAPI.updateStatus(
-        selectedCandidate.id,
-        'rejected',
-        rejectReason || 'Application preconditions or prerequisite signatures not satisfied.'
-      );
-    } catch (err) {
-      console.warn('API reject fallback:', err);
-    } finally {
+      await candidateAPI.updateStatus(selectedCandidate.id, 'rejected', reason);
       setCandidates((prev) =>
         prev.map((item) =>
           item.id === selectedCandidate.id
             ? {
                 ...item,
                 status: 'rejected',
-                rejection_reason: rejectReason || 'Application preconditions not met.',
+                rejection_reason: reason,
               }
             : item
         )
@@ -140,13 +163,18 @@ export default function AdminCandidatesPage() {
           ? {
               ...prev,
               status: 'rejected',
-              rejection_reason: rejectReason || 'Application preconditions not met.',
+              rejection_reason: reason,
             }
           : null
       );
-      setProcessing(false);
       setIsRejectModalOpen(false);
       setRejectReason('');
+    } catch (err) {
+      console.error('Reject candidate error:', err);
+      const errMsg = err.response?.data?.message || 'Failed to reject candidate.';
+      alert(`Reject Error: ${errMsg}`);
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -164,7 +192,9 @@ export default function AdminCandidatesPage() {
       setSelectedCandidate((prev) => (prev ? { ...prev, status: 'reupload_requested' } : null));
       alert('Re-upload / Edit request sent to candidate successfully!');
     } catch (err) {
-      console.warn('API reupload request fallback:', err);
+      console.error('Re-upload request error:', err);
+      const errMsg = err.response?.data?.message || 'Failed to send re-upload request.';
+      alert(`Re-upload Error: ${errMsg}`);
     } finally {
       setProcessing(false);
     }

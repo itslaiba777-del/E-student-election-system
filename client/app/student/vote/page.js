@@ -19,38 +19,7 @@ export default function StudentBallotPage() {
     department_name: 'Computer Science & AI',
   });
 
-  const [candidates, setCandidates] = useState([
-    {
-      id: 101,
-      full_name: 'Alex Rivera',
-      position_title: 'Student Body President',
-      department_name: 'Civic Leadership / Computer Science',
-      manifesto_summary: 'Building a more sustainable and inclusive campus for every student, every day.',
-      symbol_name: 'STAR',
-      symbol_image_url: null,
-      photo_url: null,
-    },
-    {
-      id: 102,
-      full_name: 'Jordan Chen',
-      position_title: 'Student Body President',
-      department_name: 'Tech & Innovation / Information Tech',
-      manifesto_summary: 'Leveraging technology to streamline student services and transparent governance.',
-      symbol_name: 'BOOK',
-      symbol_image_url: null,
-      photo_url: null,
-    },
-    {
-      id: 103,
-      full_name: 'Marcus Thorne',
-      position_title: 'Student Body President',
-      department_name: 'Law & Governance',
-      manifesto_summary: 'Advocating for student rights and fair representation at the administrative level.',
-      symbol_name: 'BULB',
-      symbol_image_url: null,
-      photo_url: null,
-    },
-  ]);
+  const [candidates, setCandidates] = useState([]);
 
   const [selectedCandidateId, setSelectedCandidateId] = useState(null);
   const [isWriteIn, setIsWriteIn] = useState(false);
@@ -67,14 +36,14 @@ export default function StudentBallotPage() {
   const fetchBallotData = async () => {
     try {
       const res = await electionAPI.getById(electionId);
-      if (res.data.election) {
+      if (res.data?.election) {
         setElection(res.data.election);
       }
-      if (res.data.candidates && res.data.candidates.length > 0) {
+      if (res.data?.candidates) {
         setCandidates(res.data.candidates);
       }
     } catch (err) {
-      console.warn('Ballot API fetch fallback:', err);
+      console.warn('Ballot API fetch error:', err);
     }
   };
 
@@ -101,21 +70,26 @@ export default function StudentBallotPage() {
     setSubmitting(true);
 
     try {
+      const token2Fa = typeof window !== 'undefined' ? sessionStorage.getItem(`vote_2fa_token_${electionId}`) : null;
       const payload = {
         election_id: electionId,
         candidate_id: isWriteIn ? null : selectedCandidateId,
         write_in_name: isWriteIn ? writeInName.trim() : null,
+        verification_token: token2Fa,
       };
 
       const res = await voteAPI.castVote(payload);
-      const receiptId = res.data?.receipt_id || `CV-2024-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem(`vote_2fa_token_${electionId}`);
+      }
+      const receiptId = res.data?.receipt_id || `CV-2026-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
       // Vote successfully recorded -> Navigate to Vote Success Screen
       router.push(`/student/vote/success?receipt_id=${receiptId}&election_title=${encodeURIComponent(election.title)}`);
     } catch (err) {
-      console.warn('Vote submission fallback redirect:', err);
-      const fallbackReceipt = `CV-2024-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-      router.push(`/student/vote/success?receipt_id=${fallbackReceipt}&election_title=${encodeURIComponent(election.title)}`);
+      console.error('Vote submission failed:', err);
+      const errMsg = err.response?.data?.message || 'Vote submission failed. Please try again.';
+      alert(`Vote Error: ${errMsg}`);
     } finally {
       setSubmitting(false);
       setIsConfirmModalOpen(false);
@@ -176,16 +150,22 @@ export default function StudentBallotPage() {
             Official Candidates
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {candidates.map((cand) => (
-              <CandidateCard
-                key={cand.id}
-                candidate={cand}
-                isSelected={selectedCandidateId === cand.id}
-                onSelect={handleSelectCandidate}
-              />
-            ))}
-          </div>
+          {candidates.length === 0 ? (
+            <div className="p-8 text-center bg-white rounded-2xl border border-[#c0c9bb] text-xs text-[#717a6d]">
+              No approved candidates have been nominated for this election yet.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {candidates.map((cand) => (
+                <CandidateCard
+                  key={cand.id}
+                  candidate={cand}
+                  isSelected={selectedCandidateId === cand.id}
+                  onSelect={handleSelectCandidate}
+                />
+              ))}
+            </div>
+          )}
 
           {/* Write-in Candidate Card Option */}
           <div

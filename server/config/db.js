@@ -1,6 +1,7 @@
 const { Pool } = require('pg');
+const path = require('path');
 const bcrypt = require('bcrypt');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 let rawConnectionString = process.env.DATABASE_URL;
 
@@ -126,14 +127,16 @@ const memoryDb = {
 };
 
 const fs = require('fs');
-const path = require('path');
 const DB_FILE_PATH = path.join(__dirname, '../data/persistent_db.json');
+
+let lastLoadedMtime = 0;
 
 const persistToDisk = () => {
   try {
     const dir = path.dirname(DB_FILE_PATH);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(DB_FILE_PATH, JSON.stringify(memoryDb, null, 2), 'utf8');
+    lastLoadedMtime = fs.statSync(DB_FILE_PATH).mtimeMs;
   } catch (err) {
     console.warn('Persistent DB write warning:', err.message);
   }
@@ -142,9 +145,11 @@ const persistToDisk = () => {
 const loadFromDisk = () => {
   try {
     if (fs.existsSync(DB_FILE_PATH)) {
+      const stat = fs.statSync(DB_FILE_PATH);
       const content = fs.readFileSync(DB_FILE_PATH, 'utf8');
       const loaded = JSON.parse(content);
       Object.assign(memoryDb, loaded);
+      lastLoadedMtime = stat.mtimeMs;
       console.log('✅ Persistent Database loaded from disk:', {
         students: memoryDb.students?.length || 0,
         candidates: memoryDb.candidates?.length || 0,
@@ -156,6 +161,22 @@ const loadFromDisk = () => {
     }
   } catch (err) {
     console.warn('Persistent DB load error:', err.message);
+  }
+};
+
+const syncFromDiskIfNeeded = () => {
+  try {
+    if (fs.existsSync(DB_FILE_PATH)) {
+      const stat = fs.statSync(DB_FILE_PATH);
+      if (stat.mtimeMs > lastLoadedMtime) {
+        const content = fs.readFileSync(DB_FILE_PATH, 'utf8');
+        const loaded = JSON.parse(content);
+        Object.assign(memoryDb, loaded);
+        lastLoadedMtime = stat.mtimeMs;
+      }
+    }
+  } catch (err) {
+    console.warn('Persistent DB sync warning:', err.message);
   }
 };
 
@@ -183,16 +204,25 @@ pool.on('error', (err) => {
 });
 
 const handleMemoryQuery = (queryStr, text, params) => {
+  syncFromDiskIfNeeded();
+
   // 1. SELECT COUNT
-    if (queryStr.startsWith('select count(*)')) {
-      if (queryStr.includes('from superadmins')) return { rows: [{ count: memoryDb.superadmins.length }] };
-      if (queryStr.includes('from universities')) return { rows: [{ count: memoryDb.universities.length }] };
-      if (queryStr.includes('from admins')) return { rows: [{ count: memoryDb.admins.length }] };
-      if (queryStr.includes('from students')) return { rows: [{ count: memoryDb.students.length }] };
-      if (queryStr.includes('from elections')) return { rows: [{ count: memoryDb.elections.length }] };
-      if (queryStr.includes('from system_settings')) return { rows: [{ count: memoryDb.system_settings.length }] };
-      return { rows: [{ count: 0 }] };
-    }
+  if (queryStr.startsWith('select count(*)')) {
+    if (queryStr.includes('from superadmins')) return { rows: [{ count: (memoryDb.superadmins || []).length }] };
+    if (queryStr.includes('from universities')) return { rows: [{ count: (memoryDb.universities || []).length }] };
+    if (queryStr.includes('from admins')) return { rows: [{ count: (memoryDb.admins || []).length }] };
+    if (queryStr.includes('from students')) return { rows: [{ count: (memoryDb.students || []).length }] };
+    if (queryStr.includes('from voters')) return { rows: [{ count: (memoryDb.voters || []).length }] };
+    if (queryStr.includes('from elections')) return { rows: [{ count: (memoryDb.elections || []).length }] };
+    if (queryStr.includes('from system_settings')) return { rows: [{ count: (memoryDb.system_settings || []).length }] };
+    if (queryStr.includes('from departments')) return { rows: [{ count: (memoryDb.departments || []).length }] };
+    if (queryStr.includes('from faculties')) return { rows: [{ count: (memoryDb.faculties || []).length }] };
+    if (queryStr.includes('from programs')) return { rows: [{ count: (memoryDb.programs || []).length }] };
+    if (queryStr.includes('from candidates')) return { rows: [{ count: (memoryDb.candidates || []).length }] };
+    if (queryStr.includes('from votes')) return { rows: [{ count: (memoryDb.votes || []).length }] };
+    if (queryStr.includes('from student_records')) return { rows: [{ count: (memoryDb.student_records || []).length }] };
+    return { rows: [{ count: 0 }] };
+  }
 
     // 2. SELECT FROM superadmins
     if (queryStr.includes('from superadmins')) {
@@ -210,11 +240,25 @@ const handleMemoryQuery = (queryStr, text, params) => {
         const val = (params[0] || '').toString().toLowerCase();
         const match = memoryDb.admins.find(
           (a) =>
+            (a.id && a.id.toString() === val) ||
             a.email.toLowerCase() === val ||
             a.name.toLowerCase() === val ||
             a.name.toLowerCase().split(' ')[0] === val
         );
-        return { rows: match ? [match] : [] };
+        if (match) {
+          const enrichedAdmin = {
+            ...match,
+            can_approve_candidates: match.can_approve_candidates !== false,
+            can_approve_students: match.can_approve_students !== false,
+            can_view_candidates: true,
+            can_view_students: true,
+            can_view_results: true,
+            can_submit_results: true,
+            can_extend_voting_time: true,
+          };
+          return { rows: [enrichedAdmin] };
+        }
+        return { rows: [] };
       }
       return { rows: memoryDb.admins };
     }
@@ -239,9 +283,13 @@ const handleMemoryQuery = (queryStr, text, params) => {
       return { rows: memoryDb.student_records || [] };
     }
 
-    // 4c. DELETE FROM students
+    // 4c. DELETE FROM students / voters
     if (queryStr.startsWith('delete from students')) {
       memoryDb.students = [];
+      return { rows: [] };
+    }
+    if (queryStr.startsWith('delete from voters')) {
+      memoryDb.voters = [];
       return { rows: [] };
     }
 
@@ -414,14 +462,53 @@ const handleMemoryQuery = (queryStr, text, params) => {
       return { rows: [newStudent] };
     }
 
-    // UPDATE students
-    if (queryStr.startsWith('update students')) {
+    // INSERT INTO voters
+    if (queryStr.startsWith('insert into voters')) {
+      const newVoter = {
+        id: (memoryDb.voters || []).length + 1,
+        full_name: params[0] || 'Voter User',
+        father_name: params[1] || null,
+        cnic: params[2] || '',
+        registration_number: params[3] || '',
+        mobile_number: params[4] || null,
+        email: params[5] || '',
+        password_hash: params[6] || '',
+        university_id: params[7] || 1,
+        faculty_id: params[8] || 1,
+        department_id: params[9] || 1,
+        program_id: params[10] || null,
+        batch: params[11] || null,
+        semester: params[12] || null,
+        cgpa: params[13] || null,
+        face_encoding: params[14] || null,
+        profile_image_url: params[15] || null,
+        status: 'active',
+        has_voted: false,
+        created_at: new Date().toISOString(),
+      };
+      if (!memoryDb.voters) memoryDb.voters = [];
+      memoryDb.voters.unshift(newVoter);
+      return { rows: [newVoter] };
+    }
+
+    // UPDATE voters
+    if (queryStr.startsWith('update voters')) {
+      if (queryStr.includes('set has_voted')) {
+        const id = params[0];
+        const email = params[1] || '';
+        const v = (memoryDb.voters || []).find((s) => s.id == id || (email && s.email === email));
+        if (v) {
+          v.has_voted = true;
+          return { rows: [v] };
+        }
+        return { rows: [] };
+      }
       const statusVal = params[0];
-      const studentId = params[1];
-      const st = (memoryDb.students || []).find((s) => s.id == studentId);
-      if (st) {
-        st.status = statusVal;
-        return { rows: [st] };
+      const voterId = params[1];
+      const v = (memoryDb.voters || []).find((s) => s.id == voterId);
+      if (v) {
+        v.status = statusVal;
+        return { rows: [v] };
       }
       return { rows: [] };
     }
@@ -478,22 +565,37 @@ const handleMemoryQuery = (queryStr, text, params) => {
     if (queryStr.includes('from students')) {
       let resultRows = memoryDb.students || [];
 
-      // If querying specifically for voters, exclude candidates
-      if (queryStr.includes("user_role = 'voter'") || queryStr.includes('user_role')) {
+      // Filter by user_role
+      if (queryStr.includes("user_role = 'candidate'") || (params && params.includes('candidate'))) {
+        resultRows = resultRows.filter((s) => s.user_role === 'candidate');
+      } else if (queryStr.includes("user_role = 'voter'") || queryStr.includes("user_role is null") || (params && params.includes('voter'))) {
         resultRows = resultRows.filter((s) => s.user_role === 'voter' || !s.user_role);
       }
 
       if (params && params.length > 0) {
-        const val = (params[0] || '').toString().toLowerCase();
-        const matches = resultRows.filter((s) => {
-          return (
-            (s.email && s.email.toLowerCase() === val) ||
-            (s.cnic && s.cnic.toLowerCase() === val) ||
-            (s.registration_number && s.registration_number.toLowerCase() === val) ||
-            (s.id && s.id.toString() === val)
-          );
-        });
-        if (matches.length > 0) resultRows = matches;
+        if (queryStr.includes('cnic') || queryStr.includes('registration_number')) {
+          const uniId = params[0];
+          const searchVals = params.slice(1).map((p) => (p || '').toString().toLowerCase().trim().replace(/-/g, ''));
+          const matches = resultRows.filter((s) => {
+            const sCnic = (s.cnic || '').toString().toLowerCase().replace(/-/g, '');
+            const sReg = (s.registration_number || '').toString().toLowerCase().replace(/-/g, '');
+            const uniMatches = !uniId || s.university_id == uniId;
+            const idMatches = searchVals.some((v) => v && (sCnic === v || sReg === v || sCnic.includes(v) || sReg.includes(v)));
+            return uniMatches && idMatches;
+          });
+          resultRows = matches;
+        } else {
+          const val = (params[0] || '').toString().toLowerCase().trim();
+          const matches = resultRows.filter((s) => {
+            return (
+              (s.email && s.email.toLowerCase() === val) ||
+              (s.cnic && s.cnic.toLowerCase() === val) ||
+              (s.registration_number && s.registration_number.toLowerCase() === val) ||
+              (s.id && s.id.toString() === val)
+            );
+          });
+          resultRows = matches;
+        }
       }
       const enriched = resultRows.map((s) => ({
         ...s,
@@ -505,6 +607,47 @@ const handleMemoryQuery = (queryStr, text, params) => {
         mobile_number: s.mobile_number || '03096932637',
         profile_image_url: s.profile_image_url || s.photo_url || null,
         photo_url: s.profile_image_url || s.photo_url || null,
+      }));
+      return { rows: enriched };
+    }
+
+    // 7b. SELECT FROM voters
+    if (queryStr.includes('from voters')) {
+      let resultRows = memoryDb.voters || [];
+      if (params && params.length > 0) {
+        if (queryStr.includes('cnic') || queryStr.includes('registration_number')) {
+          const uniId = params[0];
+          const searchVals = params.slice(1).map((p) => (p || '').toString().toLowerCase().trim().replace(/-/g, ''));
+          const matches = resultRows.filter((s) => {
+            const sCnic = (s.cnic || '').toString().toLowerCase().replace(/-/g, '');
+            const sReg = (s.registration_number || '').toString().toLowerCase().replace(/-/g, '');
+            const uniMatches = !uniId || s.university_id == uniId;
+            const idMatches = searchVals.some((v) => v && (sCnic === v || sReg === v || sCnic.includes(v) || sReg.includes(v)));
+            return uniMatches && idMatches;
+          });
+          resultRows = matches;
+        } else {
+          const val = (params[0] || '').toString().toLowerCase().trim();
+          const matches = resultRows.filter((s) => {
+            return (
+              (s.email && s.email.toLowerCase() === val) ||
+              (s.cnic && s.cnic.toLowerCase() === val) ||
+              (s.registration_number && s.registration_number.toLowerCase() === val) ||
+              (s.id && s.id.toString() === val)
+            );
+          });
+          resultRows = matches;
+        }
+      }
+      const enriched = resultRows.map((s) => ({
+        ...s,
+        university_name: s.university_name || 'COMSATS University Islamabad',
+        faculty_name: s.faculty_name || 'Department of Computer Science',
+        department_name: s.department_name || 'Department of Computer Science',
+        program_name: s.program_name || 'BS Computer Science',
+        father_name: s.father_name || 'Muhammad Akram',
+        mobile_number: s.mobile_number || '03096932637',
+        profile_image_url: s.profile_image_url || null,
       }));
       return { rows: enriched };
     }
@@ -600,9 +743,112 @@ const handleMemoryQuery = (queryStr, text, params) => {
       return { rows: memoryDb.elections || [] };
     }
 
+    // 9a. INSERT INTO candidates
+    if (queryStr.startsWith('insert into candidates')) {
+      if (!memoryDb.candidates) memoryDb.candidates = [];
+      const newCand = {
+        id: memoryDb.candidates.length + 1,
+        name: params[0],
+        party: params[1],
+        slogan: params[2],
+        motto: params[3],
+        manifesto: params[4],
+        bio: params[5],
+        experience: params[6],
+        photo_url: params[7],
+        symbol_image_url: params[8],
+        faculty_id: params[9] || 1,
+        department_id: params[10] || 1,
+        program_id: params[11] || null,
+        election_id: params[12] || 1,
+        status: 'pending',
+        email: params[13] || null,
+        registration_number: params[14] || null,
+        cnic: params[15] || null,
+        created_at: new Date().toISOString(),
+      };
+      memoryDb.candidates.push(newCand);
+      return { rows: [newCand] };
+    }
+
+    // 9b. UPDATE candidates
+    if (queryStr.startsWith('update candidates')) {
+      const id = params[params.length - 1];
+      const cand = (memoryDb.candidates || []).find((c) => c.id == id);
+      if (cand) {
+        if (queryStr.includes('reupload_requested')) {
+          cand.status = 'reupload_requested';
+          cand.party = null;
+          cand.slogan = null;
+          cand.motto = null;
+          cand.manifesto = null;
+          cand.bio = null;
+          cand.experience = null;
+          cand.photo_url = null;
+          cand.symbol_image_url = null;
+        } else {
+          cand.status = params[0] || cand.status;
+          cand.rejection_reason = params[1] || null;
+        }
+        return { rows: [cand] };
+      }
+      return { rows: [] };
+    }
+
     // 10. SELECT FROM candidates
     if (queryStr.includes('from candidates')) {
-      return { rows: memoryDb.candidates || [] };
+      let rows = [...(memoryDb.candidates || [])];
+      if (queryStr.includes("status = 'approved'") || (params && params.includes('approved'))) {
+        rows = rows.filter((c) => c.status === 'approved');
+      } else if (queryStr.includes("status = 'pending'") || (params && params.includes('pending'))) {
+        rows = rows.filter((c) => c.status === 'pending');
+      } else if (queryStr.includes("status = 'rejected'") || (params && params.includes('rejected'))) {
+        rows = rows.filter((c) => c.status === 'rejected');
+      }
+
+      if (queryStr.includes('election_id = $') || queryStr.includes('c.election_id = $')) {
+        const elecId = params[0] || params[1];
+        if (elecId) rows = rows.filter((c) => c.election_id == elecId);
+      }
+
+      if (queryStr.includes('name ilike') && params && params.length > 0) {
+        const searchName = (params[0] || '').toString().replace(/%/g, '').toLowerCase().trim();
+        rows = rows.filter((c) => (c.name || '').toLowerCase().includes(searchName));
+      }
+
+      const enriched = rows.map((c) => ({
+        ...c,
+        election_title: (memoryDb.elections && memoryDb.elections.find((e) => e.id == c.election_id)?.title) || 'Fall 2026 General Election',
+        position_title: (memoryDb.elections && memoryDb.elections.find((e) => e.id == c.election_id)?.position_title) || 'President',
+        department_name: c.department_name || (memoryDb.departments && memoryDb.departments.find((d) => d.id == c.department_id)?.department_name) || 'Department of Computer Science',
+      }));
+      return { rows: enriched };
+    }
+
+    // 10b. INSERT INTO votes
+    if (queryStr.startsWith('insert into votes')) {
+      if (!memoryDb.votes) memoryDb.votes = [];
+      const newVote = {
+        id: memoryDb.votes.length + 1,
+        election_id: params[0] || 1,
+        candidate_id: params[1],
+        voter_id: params[2],
+        student_id: params[3] || params[2],
+        created_at: new Date().toISOString(),
+      };
+      memoryDb.votes.push(newVote);
+      return { rows: [newVote] };
+    }
+
+    // 10c. SELECT FROM votes
+    if (queryStr.includes('from votes')) {
+      let rows = memoryDb.votes || [];
+      if (params && params.length >= 2) {
+        rows = rows.filter((v) => v.election_id == params[0] && (v.voter_id == params[1] || v.student_id == params[1]));
+      } else if (params && params.length === 1) {
+        rows = rows.filter((v) => v.election_id == params[0] || v.voter_id == params[0] || v.student_id == params[0]);
+      }
+      return { rows };
     }
 
     // 11. INSERT INTO election_schedule_logs
@@ -638,6 +884,7 @@ const safeQuery = async (text, params = []) => {
     isDbConnected = true;
     return res;
   } catch (err) {
+    console.warn('⚠️ [DB POOL FALLBACK]:', err.message, 'Query:', text.substring(0, 100));
     const queryStr = text.trim().toLowerCase();
     const res = handleMemoryQuery(queryStr, text, params);
     if (

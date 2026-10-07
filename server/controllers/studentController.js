@@ -27,12 +27,16 @@ const verifyEligibility = async (req, res) => {
       });
     }
 
-    // 2. Check if already registered
-    const existingStudent = await db.query(
-      'SELECT id FROM students WHERE university_id = $1 AND (cnic = $2 OR registration_number = $3)',
+    // 2. Check if already registered as voter or candidate
+    const existingVoter = await db.query(
+      'SELECT id FROM voters WHERE university_id = $1 AND (cnic = $2 OR registration_number = $3)',
       [university_id, cnic.trim(), registration_number.trim()]
     );
-    if (existingStudent.rows.length > 0) {
+    const existingCandidate = await db.query(
+      'SELECT id FROM candidates WHERE (cnic = $1 OR registration_number = $2)',
+      [cnic.trim(), registration_number.trim()]
+    );
+    if (existingVoter.rows.length > 0 || existingCandidate.rows.length > 0) {
       return res.status(400).json({ message: 'Student with this CNIC or Registration Number is already registered.' });
     }
 
@@ -121,10 +125,6 @@ const verifyOtp = async (req, res) => {
 
     const record = otpStore.get(email.toLowerCase().trim());
     if (!record) {
-      // Demo fallback: accept 123456 or any code if simulated
-      if (otp_code === '123456' || otp_code.length === 6) {
-        return res.status(200).json({ message: 'OTP verified successfully.' });
-      }
       return res.status(400).json({ message: 'No OTP record found. Please request a new OTP.' });
     }
 
@@ -133,7 +133,7 @@ const verifyOtp = async (req, res) => {
       return res.status(400).json({ message: 'OTP has expired. Please request a new code.' });
     }
 
-    if (record.code !== otp_code.trim() && otp_code !== '123456') {
+    if (record.code !== otp_code.trim()) {
       return res.status(400).json({ message: 'Invalid OTP code. Please try again.' });
     }
 
@@ -217,12 +217,16 @@ const registerStudent = async (req, res) => {
       }
     }
 
-    // Check if email or CNIC/Reg number already registered
-    const existing = await db.query(
-      'SELECT id FROM students WHERE email = $1 OR (university_id = $2 AND (cnic = $3 OR registration_number = $4))',
+    // Check if email or CNIC/Reg number already registered in voters or candidates
+    const existingVoter = await db.query(
+      'SELECT id FROM voters WHERE email = $1 OR (university_id = $2 AND (cnic = $3 OR registration_number = $4))',
       [trimmedEmail, university_id, trimmedCnic, trimmedReg]
     );
-    if (existing.rows.length > 0) {
+    const existingCand = await db.query(
+      'SELECT id FROM candidates WHERE email = $1 OR (cnic = $2 OR registration_number = $3)',
+      [trimmedEmail, trimmedCnic, trimmedReg]
+    );
+    if (existingVoter.rows.length > 0 || existingCand.rows.length > 0) {
       return res.status(400).json({ message: 'User with this Email, CNIC, or Registration Number is already registered.' });
     }
 
@@ -297,73 +301,90 @@ const registerStudent = async (req, res) => {
       }
     } catch (e) {}
 
-    const insertQuery = `
-      INSERT INTO students (
-        full_name, father_name, cnic, registration_number, mobile_number, user_role,
-        university_id, faculty_id, department_id, program_id, batch, semester, cgpa,
-        email, password_hash, face_encoding, profile_image_url, party_name, symbol_url, manifesto, status
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, 'active')
-      RETURNING id, full_name, father_name, cnic, registration_number, mobile_number, user_role, email, profile_image_url, status, created_at
-    `;
+    let newStudent = null;
 
-    const values = [
-      full_name ? full_name.trim() : 'Student User',
-      resolvedFatherName || 'Muhammad Akram',
-      trimmedCnic,
-      trimmedReg,
-      resolvedMobileNumber || '03096932637',
-      role,
-      university_id,
-      resolvedFacultyId || 1,
-      resolvedDeptId || 1,
-      program_id || null,
-      batch || null,
-      semester || null,
-      cgpa ? parseFloat(cgpa) : null,
-      trimmedEmail,
-      password_hash,
-      typeof faceDescriptorToStore === 'object' ? JSON.stringify(faceDescriptorToStore) : faceDescriptorToStore || null,
-      profileImageUrl,
-      party_name ? party_name.trim() : null,
-      symbol_url ? symbol_url.trim() : null,
-      manifesto ? manifesto.trim() : null,
-    ];
-
-    const result = await db.query(insertQuery, values);
-    const newStudent = result.rows[0];
-
-    // If registered as candidate, create candidate application entry for Admin review
     if (role === 'candidate') {
+      let electionId = 1;
       try {
-        let electionId = 1;
         const elecRes = await db.query("SELECT id FROM elections WHERE status != 'archived' ORDER BY created_at DESC LIMIT 1");
         if (elecRes.rows && elecRes.rows.length > 0) {
           electionId = elecRes.rows[0].id;
         }
+      } catch (e) {}
 
-        await db.query(
-          `INSERT INTO candidates (name, party, manifesto, photo_url, symbol_image_url, faculty_id, department_id, program_id, election_id, status)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending')`,
-          [
-            full_name ? full_name.trim() : 'Candidate',
-            party_name ? party_name.trim() : 'Independent',
-            manifesto ? manifesto.trim() : null,
-            profileImageUrl || null,
-            symbol_url ? symbol_url.trim() : null,
-            resolvedFacultyId || 1,
-            resolvedDeptId || 1,
-            program_id || null,
-            electionId,
-          ]
-        );
-      } catch (candErr) {
-        console.warn('Candidate application row creation warning:', candErr.message);
-      }
+      const candSlogan = (req.body.slogan || req.body.party_slogan || '').trim() || null;
+
+      const insertCandQuery = `
+        INSERT INTO candidates (
+          name, father_name, cnic, registration_number, mobile_number, email, password_hash,
+          university_id, faculty_id, department_id, program_id, batch, semester, cgpa,
+          photo_url, symbol_image_url, party, manifesto, election_id, status, face_encoding, slogan
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 'pending', $20, $21)
+        RETURNING id, name as full_name, father_name, cnic, registration_number, mobile_number, email, photo_url as profile_image_url, status, created_at
+      `;
+      const candValues = [
+        full_name ? full_name.trim() : 'Candidate',
+        resolvedFatherName || 'Muhammad Akram',
+        trimmedCnic,
+        trimmedReg,
+        resolvedMobileNumber || '03096932637',
+        trimmedEmail,
+        password_hash,
+        university_id,
+        resolvedFacultyId || 1,
+        resolvedDeptId || 1,
+        program_id || null,
+        batch || null,
+        semester || null,
+        cgpa ? parseFloat(cgpa) : null,
+        profileImageUrl,
+        symbol_url ? symbol_url.trim() : null,
+        party_name ? party_name.trim() : 'Independent',
+        manifesto ? manifesto.trim() : null,
+        electionId,
+        typeof faceDescriptorToStore === 'object' ? JSON.stringify(faceDescriptorToStore) : faceDescriptorToStore || null,
+        candSlogan,
+      ];
+
+      const result = await db.query(insertCandQuery, candValues);
+      newStudent = { ...result.rows[0], user_role: 'candidate' };
+    } else {
+      // Role is voter: Insert directly into voters table!
+      const insertVoterQuery = `
+        INSERT INTO voters (
+          full_name, father_name, cnic, registration_number, mobile_number, email, password_hash,
+          university_id, faculty_id, department_id, program_id, batch, semester, cgpa,
+          face_encoding, profile_image_url, status, has_voted
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'active', false)
+        RETURNING id, full_name, father_name, cnic, registration_number, mobile_number, email, profile_image_url, status, created_at
+      `;
+      const voterValues = [
+        full_name ? full_name.trim() : 'Voter User',
+        resolvedFatherName || 'Muhammad Akram',
+        trimmedCnic,
+        trimmedReg,
+        resolvedMobileNumber || '03096932637',
+        trimmedEmail,
+        password_hash,
+        university_id,
+        resolvedFacultyId || 1,
+        resolvedDeptId || 1,
+        program_id || null,
+        batch || null,
+        semester || null,
+        cgpa ? parseFloat(cgpa) : null,
+        typeof faceDescriptorToStore === 'object' ? JSON.stringify(faceDescriptorToStore) : faceDescriptorToStore || null,
+        profileImageUrl,
+      ];
+
+      const result = await db.query(insertVoterQuery, voterValues);
+      newStudent = { ...result.rows[0], user_role: 'voter' };
     }
 
     return res.status(201).json({
-      message: `${role === 'candidate' ? 'Candidate' : 'Voter'} registered successfully. You can now log in.`,
+      message: `${role === 'candidate' ? 'Candidate nomination' : 'Voter'} registered successfully. You can now log in.`,
       user: newStudent,
       student: newStudent,
     });
@@ -379,23 +400,40 @@ const registerStudent = async (req, res) => {
 const getProfile = async (req, res) => {
   try {
     const studentId = req.user.id;
-    const query = `
-      SELECT s.id, s.full_name, s.father_name, s.cnic, s.registration_number, s.mobile_number,
-             s.user_role, s.email, s.profile_image_url, s.face_encoding, s.batch, s.semester, s.cgpa, s.status, s.created_at,
-             u.id as university_id, u.university_name, u.logo_url,
-             f.id as faculty_id, f.faculty_name,
-             d.id as department_id, d.department_name,
-             p.id as program_id, p.program_name
-      FROM students s
-      LEFT JOIN universities u ON s.university_id = u.id
-      LEFT JOIN faculties f ON s.faculty_id = f.id
-      LEFT JOIN departments d ON s.department_id = d.id
-      LEFT JOIN programs p ON s.program_id = p.id
-      WHERE s.id = $1
-    `;
+    const isCandidate = req.user.role === 'candidate';
+    const query = isCandidate
+      ? `
+        SELECT c.id, c.name as full_name, c.father_name, c.cnic, c.registration_number, c.mobile_number,
+               'candidate' as user_role, c.email, c.photo_url as profile_image_url, c.symbol_image_url as symbol_url,
+               c.party as party_name, c.manifesto, c.face_encoding, c.batch, c.semester, c.cgpa, c.status, c.created_at,
+               u.id as university_id, u.university_name, u.logo_url,
+               f.id as faculty_id, f.faculty_name,
+               d.id as department_id, d.department_name,
+               p.id as program_id, p.program_name
+        FROM candidates c
+        LEFT JOIN universities u ON c.university_id = u.id
+        LEFT JOIN faculties f ON c.faculty_id = f.id
+        LEFT JOIN departments d ON c.department_id = d.id
+        LEFT JOIN programs p ON c.program_id = p.id
+        WHERE c.id = $1
+      `
+      : `
+        SELECT v.id, v.full_name, v.father_name, v.cnic, v.registration_number, v.mobile_number,
+               'voter' as user_role, v.email, v.profile_image_url, v.face_encoding, v.batch, v.semester, v.cgpa, v.status, v.has_voted, v.created_at,
+               u.id as university_id, u.university_name, u.logo_url,
+               f.id as faculty_id, f.faculty_name,
+               d.id as department_id, d.department_name,
+               p.id as program_id, p.program_name
+        FROM voters v
+        LEFT JOIN universities u ON v.university_id = u.id
+        LEFT JOIN faculties f ON v.faculty_id = f.id
+        LEFT JOIN departments d ON v.department_id = d.id
+        LEFT JOIN programs p ON v.program_id = p.id
+        WHERE v.id = $1
+      `;
     const result = await db.query(query, [studentId]);
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Student profile not found.' });
+      return res.status(404).json({ message: 'User profile not found.' });
     }
 
     const student = result.rows[0];

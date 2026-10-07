@@ -9,8 +9,8 @@ router.post('/send-otp', sendOtp);
 router.post('/verify-otp', verifyOtp);
 router.post('/register', registerStudent);
 
-// Protected student profile endpoint
-router.get('/profile', verifyToken, requireRole(['student']), getProfile);
+// Protected student profile endpoint (voters, candidates, students)
+router.get('/profile', verifyToken, requireRole(['student', 'voter', 'candidate']), getProfile);
 
 module.exports = router;
 

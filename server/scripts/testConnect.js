@@ -22,8 +22,10 @@ async function testConnection(connStr, label) {
   }
 }
 
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+
 async function runTests() {
-  const password = 'itslaiba777%40';
+  const password = process.env.DB_PASSWORD || 'password';
   
   // 1. Direct IPv6 address
   const connIPv6 = `postgresql://postgres:${password}@[2406:da1c:16f1:f602:e054:2c0a:42ca:29c9]:5432/postgres`;

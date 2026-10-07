@@ -154,11 +154,10 @@ export default function StudentDashboardPage() {
     return false;
   };
 
-  // Step 1: Trigger OTP for Voting
+  // Step 1: Trigger Real 2FA Voting Flow
   const handleStartVotingFlow = () => {
-    if (hasVoted) return;
-    setOtpMessage(`A 6-digit voting authorization OTP has been sent to ${student.email}`);
-    setVotingStep('otp');
+    if (hasVoted || !activeElection) return;
+    router.push(`/student/verify-otp?election_id=${activeElection.id}`);
   };
 
   // Step 2: Verify OTP -> Proceed to Face Scan
@@ -188,12 +187,11 @@ export default function StudentDashboardPage() {
 
       setHasVoted(true);
       setVotingStep(null);
-      alert('Vote Cast Successfully! Candidate list is now locked for your account.');
+      alert('Vote Cast Successfully! Your vote has been officially recorded in the database.');
     } catch (err) {
-      console.warn('Cast vote fallback:', err);
-      setHasVoted(true);
-      setVotingStep(null);
-      alert('Vote Cast Successfully! Candidate list is now locked for your account.');
+      console.error('Cast vote error:', err);
+      const errMsg = err.response?.data?.message || 'Failed to submit vote. Please try again.';
+      alert(`Vote Error: ${errMsg}`);
     } finally {
       setSubmittingVote(false);
     }

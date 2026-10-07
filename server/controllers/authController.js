@@ -186,70 +186,95 @@ const studentLogin = async (req, res) => {
       return res.status(400).json({ message: 'University, CNIC/Registration Number, and password are required.' });
     }
 
-    const query = `
-      SELECT s.*, u.university_name, f.faculty_name, d.department_name, p.program_name
-      FROM students s
-      LEFT JOIN universities u ON s.university_id = u.id
-      LEFT JOIN faculties f ON s.faculty_id = f.id
-      LEFT JOIN departments d ON s.department_id = d.id
-      LEFT JOIN programs p ON s.program_id = p.id
-      WHERE s.university_id = $1 AND (LOWER(s.cnic) = $2 OR LOWER(s.registration_number) = $2)
+    const cleanId = identifier.trim().toLowerCase();
+    let userRecord = null;
+    let userRole = 'voter';
+
+    // 1. Check candidates table first
+    const candQuery = `
+      SELECT c.*, c.name as full_name, u.university_name, f.faculty_name, d.department_name, p.program_name
+      FROM candidates c
+      LEFT JOIN universities u ON c.university_id = u.id
+      LEFT JOIN faculties f ON c.faculty_id = f.id
+      LEFT JOIN departments d ON c.department_id = d.id
+      LEFT JOIN programs p ON c.program_id = p.id
+      WHERE (c.university_id = $1 OR c.university_id IS NULL) AND (LOWER(c.cnic) = $2 OR LOWER(c.registration_number) = $2)
     `;
-    const result = await db.query(query, [university_id, identifier.trim().toLowerCase()]);
-    if (result.rows.length === 0) {
+    const candRes = await db.query(candQuery, [university_id, cleanId]);
+    if (candRes.rows && candRes.rows.length > 0) {
+      userRecord = candRes.rows[0];
+      userRole = 'candidate';
+    } else {
+      // 2. Check voters table
+      const voterQuery = `
+        SELECT v.*, u.university_name, f.faculty_name, d.department_name, p.program_name
+        FROM voters v
+        LEFT JOIN universities u ON v.university_id = u.id
+        LEFT JOIN faculties f ON v.faculty_id = f.id
+        LEFT JOIN departments d ON v.department_id = d.id
+        LEFT JOIN programs p ON v.program_id = p.id
+        WHERE v.university_id = $1 AND (LOWER(v.cnic) = $2 OR LOWER(v.registration_number) = $2)
+      `;
+      const voterRes = await db.query(voterQuery, [university_id, cleanId]);
+      if (voterRes.rows && voterRes.rows.length > 0) {
+        userRecord = voterRes.rows[0];
+        userRole = 'voter';
+      }
+    }
+
+    if (!userRecord) {
       await logLoginAttempt('student', identifier, 'failed', ip);
       return res.status(401).json({ message: 'Incorrect credentials or record not found.' });
     }
 
-    const student = result.rows[0];
-    if (student.status === 'locked') {
+    if (userRecord.status === 'locked') {
       await logLoginAttempt('student', identifier, 'failed', ip);
       return res.status(403).json({ message: 'Account is locked. Please contact university admin.' });
     }
 
-    const isMatch = await bcrypt.compare(password, student.password_hash);
+    const isMatch = await bcrypt.compare(password, userRecord.password_hash);
     if (!isMatch) {
       await logLoginAttempt('student', identifier, 'failed', ip);
       return res.status(401).json({ message: 'Incorrect credentials.' });
     }
 
-    await logLoginAttempt('student', student.email, 'success', ip);
+    await logLoginAttempt('student', userRecord.email, 'success', ip);
 
     const token = jwt.sign(
       {
-        id: student.id,
-        role: student.user_role || 'voter',
-        user_role: student.user_role || 'voter',
-        university_id: student.university_id,
-        faculty_id: student.faculty_id,
-        department_id: student.department_id,
-        program_id: student.program_id,
-        cnic: student.cnic,
-        registration_number: student.registration_number,
-        email: student.email,
-        full_name: student.full_name,
+        id: userRecord.id,
+        role: userRole,
+        user_role: userRole,
+        university_id: userRecord.university_id,
+        faculty_id: userRecord.faculty_id,
+        department_id: userRecord.department_id,
+        program_id: userRecord.program_id,
+        cnic: userRecord.cnic,
+        registration_number: userRecord.registration_number,
+        email: userRecord.email,
+        full_name: userRecord.full_name || userRecord.name,
       },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
     );
 
     return res.status(200).json({
-      message: `${student.user_role === 'candidate' ? 'Candidate' : 'Voter'} login successful.`,
+      message: `${userRole === 'candidate' ? 'Candidate' : 'Voter'} login successful.`,
       token,
       user: {
-        id: student.id,
-        role: student.user_role || 'voter',
-        user_role: student.user_role || 'voter',
-        full_name: student.full_name || 'Student User',
-        mobile_number: student.mobile_number,
-        cnic: student.cnic,
-        registration_number: student.registration_number,
-        email: student.email,
-        university_id: student.university_id,
-        university_name: student.university_name,
-        faculty_name: student.faculty_name,
-        department_name: student.department_name,
-        program_name: student.program_name,
+        id: userRecord.id,
+        role: userRole,
+        user_role: userRole,
+        full_name: userRecord.full_name || userRecord.name || 'Student User',
+        mobile_number: userRecord.mobile_number,
+        cnic: userRecord.cnic,
+        registration_number: userRecord.registration_number,
+        email: userRecord.email,
+        university_id: userRecord.university_id,
+        university_name: userRecord.university_name,
+        faculty_name: userRecord.faculty_name,
+        department_name: userRecord.department_name,
+        program_name: userRecord.program_name,
       },
     });
   } catch (error) {
@@ -354,60 +379,120 @@ const unifiedLogin = async (req, res) => {
       }
     }
 
-    // 3. Check Students / Candidates (by CNIC, Reg Number, or Email)
-    const studentQuery = `
-      SELECT s.*, u.university_name, f.faculty_name, d.department_name, p.program_name
-      FROM students s
-      LEFT JOIN universities u ON s.university_id = u.id
-      LEFT JOIN faculties f ON s.faculty_id = f.id
-      LEFT JOIN departments d ON s.department_id = d.id
-      LEFT JOIN programs p ON s.program_id = p.id
-      WHERE LOWER(s.email) = $1 OR LOWER(s.cnic) = $1 OR LOWER(s.registration_number) = $1
+    // 3. Check Candidates first (by CNIC, Reg Number, or Email)
+    const candQuery = `
+      SELECT c.*, c.name as full_name, u.university_name, f.faculty_name, d.department_name, p.program_name
+      FROM candidates c
+      LEFT JOIN universities u ON c.university_id = u.id
+      LEFT JOIN faculties f ON c.faculty_id = f.id
+      LEFT JOIN departments d ON c.department_id = d.id
+      LEFT JOIN programs p ON c.program_id = p.id
+      WHERE LOWER(c.email) = $1 OR LOWER(c.cnic) = $1 OR LOWER(c.registration_number) = $1
     `;
-    const studentRes = await db.query(studentQuery, [lowerIdentifier]);
-    if (studentRes.rows.length > 0) {
-      const student = studentRes.rows[0];
-      if (student.status !== 'locked') {
-        const isMatch = await bcrypt.compare(password, student.password_hash);
+    const candRes = await db.query(candQuery, [lowerIdentifier]);
+    if (candRes.rows && candRes.rows.length > 0) {
+      const candidate = candRes.rows[0];
+      if (candidate.status !== 'locked') {
+        const isMatch = await bcrypt.compare(password, candidate.password_hash);
         if (isMatch) {
-          await logLoginAttempt('student', student.email, 'success', ip);
+          await logLoginAttempt('candidate', candidate.email, 'success', ip);
           const token = jwt.sign(
             {
-              id: student.id,
-              role: student.user_role || 'voter',
-              user_role: student.user_role || 'voter',
-              university_id: student.university_id,
-              faculty_id: student.faculty_id,
-              department_id: student.department_id,
-              program_id: student.program_id,
-              cnic: student.cnic,
-              registration_number: student.registration_number,
-              email: student.email,
-              full_name: student.full_name,
+              id: candidate.id,
+              role: 'candidate',
+              user_role: 'candidate',
+              university_id: candidate.university_id,
+              faculty_id: candidate.faculty_id,
+              department_id: candidate.department_id,
+              program_id: candidate.program_id,
+              cnic: candidate.cnic,
+              registration_number: candidate.registration_number,
+              email: candidate.email,
+              full_name: candidate.full_name || candidate.name,
             },
             JWT_SECRET,
             { expiresIn: JWT_EXPIRES_IN }
           );
           return res.status(200).json({
-            message: `${student.user_role === 'candidate' ? 'Candidate' : 'Voter'} login successful.`,
+            message: 'Candidate login successful.',
             token,
             user: {
-              id: student.id,
-              role: student.user_role || 'voter',
-              user_role: student.user_role || 'voter',
-              full_name: student.full_name || 'Student User',
-              father_name: student.father_name || 'Muhammad Akram',
-              mobile_number: student.mobile_number || '03096932637',
-              cnic: student.cnic,
-              registration_number: student.registration_number,
-              email: student.email,
-              profile_image_url: student.profile_image_url || student.photo_url,
-              photo_url: student.profile_image_url || student.photo_url,
-              university_id: student.university_id,
-              university_name: student.university_name,
-              faculty_name: student.faculty_name,
-              department_name: student.department_name,
-              program_name: student.program_name,
+              id: candidate.id,
+              role: 'candidate',
+              user_role: 'candidate',
+              full_name: candidate.full_name || candidate.name || 'Candidate',
+              father_name: candidate.father_name,
+              mobile_number: candidate.mobile_number,
+              cnic: candidate.cnic,
+              registration_number: candidate.registration_number,
+              email: candidate.email,
+              profile_image_url: candidate.profile_image_url || candidate.photo_url,
+              photo_url: candidate.profile_image_url || candidate.photo_url,
+              university_id: candidate.university_id,
+              university_name: candidate.university_name,
+              faculty_name: candidate.faculty_name,
+              department_name: candidate.department_name,
+              program_name: candidate.program_name,
+            },
+          });
+        }
+      }
+    }
+
+    // 4. Check Voters (by CNIC, Reg Number, or Email)
+    const voterQuery = `
+      SELECT v.*, u.university_name, f.faculty_name, d.department_name, p.program_name
+      FROM voters v
+      LEFT JOIN universities u ON v.university_id = u.id
+      LEFT JOIN faculties f ON v.faculty_id = f.id
+      LEFT JOIN departments d ON v.department_id = d.id
+      LEFT JOIN programs p ON v.program_id = p.id
+      WHERE LOWER(v.email) = $1 OR LOWER(v.cnic) = $1 OR LOWER(v.registration_number) = $1
+    `;
+    const voterRes = await db.query(voterQuery, [lowerIdentifier]);
+    if (voterRes.rows && voterRes.rows.length > 0) {
+      const voter = voterRes.rows[0];
+      if (voter.status !== 'locked') {
+        const isMatch = await bcrypt.compare(password, voter.password_hash);
+        if (isMatch) {
+          await logLoginAttempt('voter', voter.email, 'success', ip);
+          const token = jwt.sign(
+            {
+              id: voter.id,
+              role: 'voter',
+              user_role: 'voter',
+              university_id: voter.university_id,
+              faculty_id: voter.faculty_id,
+              department_id: voter.department_id,
+              program_id: voter.program_id,
+              cnic: voter.cnic,
+              registration_number: voter.registration_number,
+              email: voter.email,
+              full_name: voter.full_name,
+            },
+            JWT_SECRET,
+            { expiresIn: JWT_EXPIRES_IN }
+          );
+          return res.status(200).json({
+            message: 'Voter login successful.',
+            token,
+            user: {
+              id: voter.id,
+              role: 'voter',
+              user_role: 'voter',
+              full_name: voter.full_name || 'Voter',
+              father_name: voter.father_name,
+              mobile_number: voter.mobile_number,
+              cnic: voter.cnic,
+              registration_number: voter.registration_number,
+              email: voter.email,
+              profile_image_url: voter.profile_image_url,
+              photo_url: voter.profile_image_url,
+              university_id: voter.university_id,
+              university_name: voter.university_name,
+              faculty_name: voter.faculty_name,
+              department_name: voter.department_name,
+              program_name: voter.program_name,
             },
           });
         }

@@ -5,7 +5,7 @@ const db = require('../config/db');
  */
 const getAdminDashboard = async (req, res) => {
   try {
-    const { level, university_id, faculty_id, department_id } = req.adminScope;
+    const { level, university_id, faculty_id, department_id } = req.adminScope || { level: 'university', university_id: 1 };
 
     let studentWhere = 'WHERE university_id = $1';
     let candidateWhere = 'WHERE e.university_id = $1';
@@ -21,7 +21,7 @@ const getAdminDashboard = async (req, res) => {
       params.push(department_id);
     }
 
-    const totalStudentsResult = await db.query(`SELECT COUNT(*) FROM students ${studentWhere}`, params);
+    const totalStudentsResult = await db.query(`SELECT COUNT(*) FROM voters ${studentWhere.replace(/s\./g, 'v.')}`, params);
     const totalCandidatesResult = await db.query(
       `SELECT COUNT(*) FROM candidates c JOIN elections e ON c.election_id = e.id ${candidateWhere}`,
       params
@@ -52,26 +52,26 @@ const getStudentsList = async (req, res) => {
   try {
     const { level, university_id, faculty_id, department_id } = req.adminScope || { level: 'university', university_id: 1 };
 
-    let whereClauses = ['s.university_id = $1', "(s.user_role = 'voter' OR s.user_role IS NULL)"];
+    let whereClauses = ['v.university_id = $1'];
     let params = [university_id];
 
     if (level === 'faculty' && faculty_id) {
       params.push(faculty_id);
-      whereClauses.push(`s.faculty_id = $${params.length}`);
+      whereClauses.push(`v.faculty_id = $${params.length}`);
     } else if (level === 'department' && department_id) {
       params.push(department_id);
-      whereClauses.push(`s.department_id = $${params.length}`);
+      whereClauses.push(`v.department_id = $${params.length}`);
     }
 
     const query = `
-      SELECT s.id, s.full_name, s.father_name, s.cnic, s.registration_number, s.mobile_number, s.user_role, s.email, s.profile_image_url, s.batch, s.semester, s.cgpa, s.status, s.created_at,
+      SELECT v.id, v.full_name, v.father_name, v.cnic, v.registration_number, v.mobile_number, 'voter' as user_role, v.email, v.profile_image_url, v.batch, v.semester, v.cgpa, v.status, v.created_at,
              f.faculty_name, d.department_name, p.program_name
-      FROM students s
-      LEFT JOIN faculties f ON s.faculty_id = f.id
-      LEFT JOIN departments d ON s.department_id = d.id
-      LEFT JOIN programs p ON s.program_id = p.id
+      FROM voters v
+      LEFT JOIN faculties f ON v.faculty_id = f.id
+      LEFT JOIN departments d ON v.department_id = d.id
+      LEFT JOIN programs p ON v.program_id = p.id
       WHERE ${whereClauses.join(' AND ')}
-      ORDER BY s.created_at DESC
+      ORDER BY v.created_at DESC
     `;
 
     const result = await db.query(query, params);
@@ -87,20 +87,22 @@ const getStudentsList = async (req, res) => {
  */
 const updateStudentStatus = async (req, res) => {
   try {
-    const { student_id } = req.params;
-    const { status } = req.body; // 'active', 'locked', 'pending'
+    const { student_id, id } = req.params;
+    const voterId = parseInt(student_id || id, 10);
+    const { status } = req.body; // 'active', 'locked', 'pending', 'deactivated'
 
-    if (!['active', 'locked', 'pending'].includes(status)) {
-      return res.status(400).json({ message: 'Invalid status value.' });
+    const allowedStatuses = ['active', 'locked', 'pending', 'deactivated'];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ message: `Invalid status value. Allowed: ${allowedStatuses.join(', ')}` });
     }
 
     const result = await db.query(
-      'UPDATE students SET status = $1 WHERE id = $2 RETURNING id, registration_number, status',
-      [status, student_id]
+      'UPDATE voters SET status = $1 WHERE id = $2 RETURNING id, registration_number, status',
+      [status, voterId]
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Student not found.' });
+      return res.status(404).json({ message: 'Voter not found.' });
     }
 
     return res.status(200).json({
@@ -174,10 +176,11 @@ const deleteDepartment = async (req, res) => {
 const updateStudentDetails = async (req, res) => {
   try {
     const { id } = req.params;
+    const voterId = parseInt(id, 10);
     const { full_name, father_name, cnic, registration_number, mobile_number, email, status } = req.body;
 
     const query = `
-      UPDATE students
+      UPDATE voters
       SET full_name = COALESCE($1, full_name),
           father_name = COALESCE($2, father_name),
           cnic = COALESCE($3, cnic),
@@ -197,7 +200,7 @@ const updateStudentDetails = async (req, res) => {
       mobile_number ? mobile_number.trim() : null,
       email ? email.trim().toLowerCase() : null,
       status || null,
-      id,
+      voterId,
     ]);
 
     if (result.rows.length === 0) {
@@ -220,6 +223,7 @@ const updateStudentDetails = async (req, res) => {
 const updateStudentPassword = async (req, res) => {
   try {
     const { id } = req.params;
+    const voterId = parseInt(id, 10);
     const { password } = req.body;
 
     if (!password || password.trim().length < 4) {
@@ -231,8 +235,8 @@ const updateStudentPassword = async (req, res) => {
     const password_hash = await bcrypt.hash(password.trim(), salt);
 
     const result = await db.query(
-      'UPDATE students SET password_hash = $1 WHERE id = $2 RETURNING id, full_name, email',
-      [password_hash, id]
+      'UPDATE voters SET password_hash = $1 WHERE id = $2 RETURNING id, full_name, email',
+      [password_hash, voterId]
     );
 
     if (result.rows.length === 0) {
@@ -254,9 +258,10 @@ const updateStudentPassword = async (req, res) => {
 const deleteStudent = async (req, res) => {
   try {
     const { id } = req.params;
+    const voterId = parseInt(id, 10);
 
-    // 1. Fetch student to get profile picture path
-    const stRes = await db.query('SELECT * FROM students WHERE id = $1', [id]);
+    // 1. Fetch voter to get profile picture path
+    const stRes = await db.query('SELECT * FROM voters WHERE id = $1', [voterId]);
     if (stRes.rows.length === 0) {
       return res.status(404).json({ message: 'Voter account not found.' });
     }
@@ -278,10 +283,8 @@ const deleteStudent = async (req, res) => {
       }
     }
 
-    // 3. Delete student from DB
-    await db.query('DELETE FROM votes WHERE student_id = $1', [id]).catch(() => {});
-    await db.query('DELETE FROM candidates WHERE student_id = $1', [id]).catch(() => {});
-    await db.query('DELETE FROM students WHERE id = $1', [id]);
+    // 3. Delete voter from DB
+    await db.query('DELETE FROM voters WHERE id = $1', [voterId]);
 
     return res.status(200).json({
       message: `Voter account '${student.full_name}' and profile picture file deleted successfully.`,

@@ -24,7 +24,10 @@ export default function FaceVerifyPage() {
     setLoading(true);
 
     try {
-      await voteAPI.verifyFace(electionId, faceData.descriptor);
+      const res = await voteAPI.verifyFace(electionId, faceData.descriptor);
+      if (res.data?.verification_token && typeof window !== 'undefined') {
+        sessionStorage.setItem(`vote_2fa_token_${electionId}`, res.data.verification_token);
+      }
       // Face Verified -> Proceed to Secret Voting Booth!
       router.push(`/student/vote?election_id=${electionId}`);
     } catch (err) {

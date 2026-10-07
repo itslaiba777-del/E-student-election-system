@@ -19,7 +19,19 @@ const commitFileToGit = (filePath, message) => {
  */
 const registerCandidate = async (req, res) => {
   try {
-    const { name, party, manifesto, bio, experience, faculty_id, department_id, program_id, election_id } = req.body;
+    const {
+      name,
+      party,
+      slogan,
+      motto,
+      manifesto,
+      bio,
+      experience,
+      faculty_id,
+      department_id,
+      program_id,
+      election_id,
+    } = req.body;
 
     let photo_url = null;
     let symbol_image_url = null;
@@ -37,8 +49,8 @@ const registerCandidate = async (req, res) => {
       }
     }
 
-    if (!name || !faculty_id || !department_id || !election_id) {
-      return res.status(400).json({ message: 'Name, faculty, department, and election ID are required.' });
+    if (!election_id) {
+      return res.status(400).json({ message: 'Election ID is required.' });
     }
 
     // Verify candidate application time window
@@ -57,23 +69,74 @@ const registerCandidate = async (req, res) => {
       return res.status(400).json({ message: 'Candidate nomination period for this election is closed.' });
     }
 
+    // Retrieve logged-in voter/student record
+    let voter = null;
+    if (req.user && req.user.id) {
+      const voterRes = await db.query(
+        'SELECT * FROM voters WHERE id = $1 OR email = $2',
+        [req.user.id, req.user.email || '']
+      );
+      if (voterRes.rows.length > 0) {
+        voter = voterRes.rows[0];
+      }
+    }
+
+    const candEmail = (voter?.email || req.user?.email || req.body.email || '').trim().toLowerCase();
+    const candRegNo = voter?.registration_number || req.body.registration_number || null;
+    const candCnic = voter?.cnic || req.body.cnic || null;
+    const candName = (voter?.full_name || name || req.user?.name || 'Candidate').trim();
+
+    // Check duplicate nomination for this election
+    const dupCheck = await db.query(
+      `SELECT id, status FROM candidates 
+       WHERE election_id = $1 AND (
+         (email IS NOT NULL AND email != '' AND LOWER(email) = LOWER($2)) OR
+         (registration_number IS NOT NULL AND registration_number != '' AND registration_number = $3) OR
+         (cnic IS NOT NULL AND cnic != '' AND cnic = $4)
+       )`,
+      [election_id, candEmail, candRegNo, candCnic]
+    );
+
+    if (dupCheck.rows.length > 0) {
+      return res.status(400).json({
+        message: `You have already submitted a nomination application for this election. Application status: ${dupCheck.rows[0].status.toUpperCase()}. Duplicate applications are not allowed.`,
+        candidate: dupCheck.rows[0],
+      });
+    }
+
     const query = `
-      INSERT INTO candidates (name, party, manifesto, bio, experience, photo_url, symbol_image_url, faculty_id, department_id, program_id, election_id, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending')
+      INSERT INTO candidates (
+        name, party, slogan, motto, manifesto, bio, experience,
+        photo_url, symbol_image_url, faculty_id, department_id, program_id,
+        election_id, status, email, registration_number, cnic,
+        university_id, father_name, mobile_number, cgpa, batch, semester
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'pending', $14, $15, $16, $17, $18, $19, $20, $21, $22)
       RETURNING *
     `;
     const values = [
-      name.trim(),
+      candName,
       party ? party.trim() : null,
+      slogan ? slogan.trim() : null,
+      motto ? motto.trim() : null,
       manifesto ? manifesto.trim() : null,
       bio ? bio.trim() : null,
       experience ? experience.trim() : null,
-      photo_url,
+      photo_url || voter?.profile_image_url || null,
       symbol_image_url,
-      faculty_id,
-      department_id,
-      program_id || null,
+      voter?.faculty_id || faculty_id || 1,
+      voter?.department_id || department_id || 1,
+      voter?.program_id || program_id || null,
       election_id,
+      candEmail || null,
+      candRegNo,
+      candCnic,
+      voter?.university_id || 1,
+      voter?.father_name || null,
+      voter?.mobile_number || null,
+      voter?.cgpa || null,
+      voter?.batch || null,
+      voter?.semester || null,
     ];
 
     const result = await db.query(query, values);
@@ -93,39 +156,6 @@ const registerCandidate = async (req, res) => {
 const getAllCandidates = async (req, res) => {
   try {
     const { status, election_id } = req.query;
-
-    // Auto-sync: Ensure every registered student with user_role = 'candidate' has a row in candidates table
-    try {
-      const pendingCandStudents = await db.query(
-        "SELECT * FROM students WHERE user_role = 'candidate'"
-      );
-      if (pendingCandStudents.rows && pendingCandStudents.rows.length > 0) {
-        for (const st of pendingCandStudents.rows) {
-          const candCheck = await db.query(
-            "SELECT id FROM candidates WHERE name ILIKE $1",
-            [st.full_name]
-          );
-          if (!candCheck.rows || candCheck.rows.length === 0) {
-            await db.query(
-              `INSERT INTO candidates (name, party, manifesto, photo_url, symbol_image_url, faculty_id, department_id, program_id, election_id, status)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, 'pending')`,
-              [
-                st.full_name || 'Candidate',
-                st.party_name || 'Independent',
-                st.manifesto || null,
-                st.profile_image_url || null,
-                st.symbol_url || null,
-                st.faculty_id || 1,
-                st.department_id || 1,
-                st.program_id || null,
-              ]
-            );
-          }
-        }
-      }
-    } catch (syncErr) {
-      console.warn('Candidates auto-sync note:', syncErr.message);
-    }
 
     let query = `
       SELECT c.*, c.name as full_name, c.party as party_name,
@@ -224,10 +254,12 @@ const getCandidatesByElection = async (req, res) => {
 const updateCandidateStatus = async (req, res) => {
   try {
     const { candidate_id } = req.params;
-    const { status } = req.body; // 'approved' | 'rejected' | 'reupload_requested'
+    const { status, rejection_reason, reason } = req.body; // 'approved' | 'rejected' | 'reupload_requested'
+
+    const candIdNum = parseInt(candidate_id, 10);
 
     if (status === 'approved') {
-      const candidateCheck = await db.query('SELECT election_id FROM candidates WHERE id = $1', [candidate_id]);
+      const candidateCheck = await db.query('SELECT election_id FROM candidates WHERE id = $1', [candIdNum]);
       if (candidateCheck.rows.length > 0) {
         const electionId = candidateCheck.rows[0].election_id;
         const elecRes = await db.query('SELECT total_seats, title FROM elections WHERE id = $1', [electionId]);
@@ -236,7 +268,7 @@ const updateCandidateStatus = async (req, res) => {
           const totalSeats = parseInt(elecRes.rows[0].total_seats || 20, 10);
           const countRes = await db.query(
             `SELECT COUNT(*) as approved_count FROM candidates WHERE election_id = $1 AND status = 'approved' AND id != $2`,
-            [electionId, candidate_id]
+            [electionId, candIdNum]
           );
           const approvedCount = parseInt(countRes.rows[0].approved_count, 10);
           
@@ -263,7 +295,7 @@ const updateCandidateStatus = async (req, res) => {
              photo_url = null,
              symbol_image_url = null
          WHERE id = $1 RETURNING *`,
-        [candidate_id]
+        [candIdNum]
       );
       if (resetRes.rows.length === 0) {
         return res.status(404).json({ message: 'Candidate nomination not found.' });
@@ -274,9 +306,15 @@ const updateCandidateStatus = async (req, res) => {
       });
     }
 
+    const rejReason = status === 'rejected' ? (rejection_reason || reason || 'No reason specified') : null;
+
     const result = await db.query(
-      'UPDATE candidates SET status = $1 WHERE id = $2 RETURNING *',
-      [status, candidate_id]
+      `UPDATE candidates
+       SET status = $1,
+           rejection_reason = $2
+       WHERE id = $3
+       RETURNING *`,
+      [status, rejReason, candIdNum]
     );
 
     if (result.rows.length === 0) {
@@ -311,8 +349,8 @@ const updateCandidateDetails = async (req, res) => {
     if (candResult.rows.length === 0) {
       const studentId = req.user?.id;
       if (studentId) {
-        const stRes = await db.query('SELECT full_name, faculty_id, department_id, program_id FROM students WHERE id = $1', [studentId]);
-        if (stRes.rows.length > 0) {
+        const stRes = await db.query('SELECT full_name, faculty_id, department_id, program_id FROM voters WHERE id = $1', [studentId]);
+        if (stRes.rows && stRes.rows.length > 0) {
           const st = stRes.rows[0];
           // Create nomination row if missing
           const ins = await db.query(
@@ -388,28 +426,24 @@ const updateCandidateDetails = async (req, res) => {
  */
 const getMyNomination = async (req, res) => {
   try {
-    const studentId = req.user?.id;
-    const studentEmail = req.user?.email;
+    const candidateId = req.user?.id;
+    const candidateEmail = req.user?.email;
 
-    if (!studentId && !studentEmail) {
+    if (!candidateId && !candidateEmail) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    // Lookup candidate by student name/email/id or query
-    const studentRes = await db.query('SELECT full_name FROM students WHERE id = $1 OR email = $2', [studentId, studentEmail]);
-    if (studentRes.rows.length === 0) {
-      return res.status(404).json({ message: 'Student profile not found.' });
-    }
-
-    const studentName = studentRes.rows[0].full_name;
-
+    // Direct lookup on candidates table by candidate ID, email, or voter registration number/CNIC
     const candRes = await db.query(
       `SELECT c.*, e.title as election_title, e.candidate_apply_end, e.status as election_status
        FROM candidates c
        JOIN elections e ON c.election_id = e.id
-       WHERE c.name ILIKE $1
+       WHERE c.id = $1 
+          OR (c.email IS NOT NULL AND c.email != '' AND LOWER(c.email) = LOWER($2))
+          OR c.registration_number = (SELECT registration_number FROM voters WHERE id = $1 LIMIT 1)
+          OR c.cnic = (SELECT cnic FROM voters WHERE id = $1 LIMIT 1)
        ORDER BY c.created_at DESC LIMIT 1`,
-      [studentName]
+      [candidateId, candidateEmail || '']
     );
 
     if (candRes.rows.length === 0) {
@@ -434,27 +468,32 @@ const getMyNomination = async (req, res) => {
  */
 const convertToVoter = async (req, res) => {
   try {
-    const studentId = req.user?.id;
-    const studentEmail = req.user?.email;
+    const candidateId = req.user?.id;
+    const candidateEmail = req.user?.email;
 
-    if (!studentId && !studentEmail) {
+    if (!candidateId && !candidateEmail) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    // Update student user_role to 'voter'
-    await db.query(
-      `UPDATE students SET user_role = 'voter' WHERE id = $1 OR email = $2`,
-      [studentId, studentEmail]
+    const candRes = await db.query(
+      'SELECT * FROM candidates WHERE id = $1 OR email = $2 LIMIT 1',
+      [candidateId, candidateEmail]
     );
 
-    // Remove candidate nomination record
-    const studentRes = await db.query(
-      'SELECT full_name FROM students WHERE id = $1 OR email = $2',
-      [studentId, studentEmail]
-    );
-    if (studentRes.rows.length > 0) {
-      const name = studentRes.rows[0].full_name;
-      await db.query('DELETE FROM candidates WHERE name ILIKE $1', [name]);
+    if (candRes.rows.length > 0) {
+      const c = candRes.rows[0];
+      // Move candidate into voters table
+      await db.query(`
+        INSERT INTO voters (
+          full_name, father_name, cnic, registration_number, mobile_number, email, password_hash,
+          university_id, faculty_id, department_id, program_id, batch, semester, cgpa,
+          profile_image_url, status, has_voted
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'active', false)
+      `, [c.name, c.father_name, c.cnic, c.registration_number, c.mobile_number, c.email, c.password_hash, c.university_id || 1, c.faculty_id || 1, c.department_id || 1, c.program_id || null, c.batch, c.semester, c.cgpa, c.photo_url]);
+
+      // Remove from candidates table
+      await db.query('DELETE FROM candidates WHERE id = $1', [c.id]);
     }
 
     return res.status(200).json({
