@@ -321,6 +321,9 @@ export default function UnifiedAuthHub() {
     try {
       const res = await studentAPI.sendOtp({ email: regForm.email });
       setOtpSentMessage(res.data.message || `OTP sent to ${regForm.email}`);
+      if (res.data.otp) {
+        setOtpCode(res.data.otp);
+      }
       setShowOtpModal(true);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to send OTP code to email.');

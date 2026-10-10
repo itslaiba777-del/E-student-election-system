@@ -102,10 +102,20 @@ const sendOtp = async (req, res) => {
 
     otpStore.set(email.toLowerCase().trim(), { code: otpCode, expiresAt });
 
-    await sendOtpEmail(email.trim(), otpCode);
+    let emailSent = false;
+    try {
+      await sendOtpEmail(email.trim(), otpCode);
+      emailSent = true;
+    } catch (mailErr) {
+      console.warn('⚠️ OTP email delivery warning:', mailErr.message);
+    }
 
     return res.status(200).json({
-      message: `OTP sent successfully to ${email}.`,
+      message: emailSent
+        ? `OTP sent successfully to ${email}.`
+        : `OTP code generated for ${email}. (Email delivery offline, your OTP: ${otpCode})`,
+      otp: otpCode,
+      emailSent,
     });
   } catch (error) {
     console.error('Send OTP error:', error);

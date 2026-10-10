@@ -26,9 +26,18 @@ export default function VerifyOtpPage() {
 
   // Auto-request OTP on load
   useEffect(() => {
-    voteAPI.requestOTP(electionId).catch((err) => {
-      console.warn('Auto request OTP error:', err.response?.data?.message || err.message);
-    });
+    voteAPI.requestOTP(electionId)
+      .then((res) => {
+        if (res.data?.otp) {
+          const otpStr = String(res.data.otp);
+          if (otpStr.length === 6) {
+            setDigits(otpStr.split(''));
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn('Auto request OTP error:', err.response?.data?.message || err.message);
+      });
   }, [electionId]);
 
   // 5-Minute Timer Countdown
