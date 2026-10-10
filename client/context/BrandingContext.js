@@ -1,9 +1,8 @@
 'use client';
 import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-const SERVER_URL = API_BASE_URL.replace(/\/api\/?$/, '');
+import { API_BASE_URL, SERVER_BASE_URL } from '../lib/api';
+const SERVER_URL = SERVER_BASE_URL;
 
 const BrandingContext = createContext({
   universityName: 'E-Election System',

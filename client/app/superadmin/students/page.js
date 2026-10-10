@@ -21,7 +21,7 @@ import {
   Trash2,
 } from 'lucide-react';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+import { API_BASE_URL, SERVER_BASE_URL } from '../../../lib/api';
 
 export default function SuperAdminStudentsPage() {
   const router = useRouter();
@@ -325,7 +325,7 @@ export default function SuperAdminStudentsPage() {
                               src={
                                 (stud.profile_image_url || stud.photo_url).startsWith('http')
                                   ? stud.profile_image_url || stud.photo_url
-                                  : `http://localhost:5000${stud.profile_image_url || stud.photo_url}`
+                                  : `${SERVER_BASE_URL}${stud.profile_image_url || stud.photo_url}`
                               }
                               alt={stud.full_name}
                               className="w-10 h-10 rounded-xl object-cover border-2 border-[#00450d]"
@@ -469,7 +469,7 @@ export default function SuperAdminStudentsPage() {
                         src={
                           (selectedStudent.profile_image_url || selectedStudent.photo_url).startsWith('http')
                             ? selectedStudent.profile_image_url || selectedStudent.photo_url
-                            : `http://localhost:5000${selectedStudent.profile_image_url || selectedStudent.photo_url}`
+                            : `${SERVER_BASE_URL}${selectedStudent.profile_image_url || selectedStudent.photo_url}`
                         }
                         alt={selectedStudent.full_name}
                         className="w-28 h-28 rounded-2xl object-cover border-4 border-[#00450d] shadow-md shrink-0"

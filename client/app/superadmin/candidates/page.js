@@ -19,7 +19,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+import { API_BASE_URL, SERVER_BASE_URL } from '../../../lib/api';
 
 export default function SuperAdminCandidatesPage() {
   const router = useRouter();
@@ -207,7 +207,7 @@ export default function SuperAdminCandidatesPage() {
                           <span className="text-xs font-bold text-[#00450d]">{cand.party || cand.party_name || 'Independent'}</span>
                           {cand.symbol_image_url && (
                             <img
-                              src={cand.symbol_image_url.startsWith('http') ? cand.symbol_image_url : `http://localhost:5000${cand.symbol_image_url}`}
+                              src={cand.symbol_image_url.startsWith('http') ? cand.symbol_image_url : `${SERVER_BASE_URL}${cand.symbol_image_url}`}
                               alt="Symbol"
                               className="w-5 h-5 object-contain rounded border border-[#c0c9bb]"
                             />
@@ -268,7 +268,7 @@ export default function SuperAdminCandidatesPage() {
                 <div className="relative w-28 h-28 rounded-full border-4 border-[#00450d] shadow-md overflow-hidden bg-[#e9e8e4] flex items-center justify-center">
                   {selectedCandidate.photo_url ? (
                     <img
-                      src={selectedCandidate.photo_url.startsWith('http') ? selectedCandidate.photo_url : `http://localhost:5000${selectedCandidate.photo_url}`}
+                      src={selectedCandidate.photo_url.startsWith('http') ? selectedCandidate.photo_url : `${SERVER_BASE_URL}${selectedCandidate.photo_url}`}
                       alt={selectedCandidate.name || selectedCandidate.full_name}
                       className="w-full h-full object-cover"
                     />
@@ -296,7 +296,7 @@ export default function SuperAdminCandidatesPage() {
                   {selectedCandidate.symbol_image_url && (
                     <div className="px-3 py-1 bg-white border border-[#c0c9bb] rounded-full flex items-center space-x-1.5 text-xs font-bold text-[#1b1c1a]">
                       <img
-                        src={selectedCandidate.symbol_image_url.startsWith('http') ? selectedCandidate.symbol_image_url : `http://localhost:5000${selectedCandidate.symbol_image_url}`}
+                        src={selectedCandidate.symbol_image_url.startsWith('http') ? selectedCandidate.symbol_image_url : `${SERVER_BASE_URL}${selectedCandidate.symbol_image_url}`}
                         alt="Symbol"
                         className="w-5 h-5 object-contain"
                       />

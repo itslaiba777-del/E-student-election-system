@@ -20,7 +20,7 @@ import {
   Check,
 } from 'lucide-react';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+import { API_BASE_URL, SERVER_BASE_URL } from '../../../lib/api';
 
 export default function StudentDashboardPage() {
   const router = useRouter();
@@ -241,7 +241,7 @@ export default function StudentDashboardPage() {
                     (student.profile_image_url || student.photo_url).startsWith('http') ||
                     (student.profile_image_url || student.photo_url).startsWith('data:')
                       ? (student.profile_image_url || student.photo_url)
-                      : `http://localhost:5000${student.profile_image_url || student.photo_url}`
+                      : `${SERVER_BASE_URL}${student.profile_image_url || student.photo_url}`
                   }
                   alt={student.full_name}
                   className="w-32 h-32 rounded-2xl object-cover border-4 border-[#00450d] shadow-md"
