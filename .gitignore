@@ -24,3 +24,11 @@ Thumbs.db
 # Backup files
 *.backup.json
 server/data/*.backup.json
+
+# Uploaded media (logos, photos, symbols, profile pics)
+server/uploads/*
+!server/uploads/.gitkeep
+!server/uploads/profile_pics/
+server/uploads/profile_pics/*
+!server/uploads/profile_pics/.gitkeep
+
