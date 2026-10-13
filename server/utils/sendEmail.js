@@ -6,13 +6,22 @@ const { generateVoteConfirmationEmail } = require('../templates/voteConfirmation
 const { generateRegistrationStatusEmail } = require('../templates/registrationStatusEmail');
 const { generateCandidateStatusEmail } = require('../templates/candidateApplicationStatusEmail');
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+const getTransporter = () => {
+  const emailUser = (process.env.EMAIL_USER || '').trim();
+  const emailPass = (process.env.EMAIL_PASS || '').replace(/\s+/g, '');
+
+  if (!emailUser || !emailPass) {
+    throw new Error('EMAIL_USER and EMAIL_PASS environment variables are not configured on Render. Please add them in Render Dashboard -> Environment.');
+  }
+
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: emailUser,
+      pass: emailPass,
+    },
+  });
+};
 
 /**
  * Send email via Nodemailer
@@ -22,20 +31,11 @@ const transporter = nodemailer.createTransport({
  * @param {string} html HTML body content
  */
 const sendEmail = async ({ to, subject, text, html }) => {
-  if (
-    !process.env.EMAIL_USER ||
-    process.env.EMAIL_USER.includes('your_email') ||
-    process.env.EMAIL_USER.includes('placeholder')
-  ) {
-    console.log(`\n📧 [SIMULATED EMAIL DELIVERED]`);
-    console.log(`   To: ${to}`);
-    console.log(`   Subject: ${subject}`);
-    console.log(`   Text: ${text}\n`);
-    return true;
-  }
+  const emailUser = (process.env.EMAIL_USER || '').trim();
+  const transporter = getTransporter();
 
   const mailOptions = {
-    from: `Campus Vote <${process.env.EMAIL_USER}>`,
+    from: `Campus Vote <${emailUser}>`,
     to,
     subject,
     text,
@@ -44,10 +44,10 @@ const sendEmail = async ({ to, subject, text, html }) => {
 
   try {
     const info = await transporter.sendMail(mailOptions);
-    console.log('📧 [NODEMAILER RESULT]', info);
+    console.log(`📧 [EMAIL DELIVERED to ${to}]`, info.messageId);
     return info;
   } catch (err) {
-    console.error('❌ [NODEMAILER ERROR]', err);
+    console.error(`❌ [EMAIL DELIVERY FAILED to ${to}]:`, err);
     throw err;
   }
 };

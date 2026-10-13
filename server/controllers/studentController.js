@@ -97,29 +97,27 @@ const sendOtp = async (req, res) => {
       return res.status(400).json({ message: 'Email address is required.' });
     }
 
+    const cleanEmail = email.trim();
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = Date.now() + 5 * 60 * 1000; // 5 mins expiration
 
-    otpStore.set(email.toLowerCase().trim(), { code: otpCode, expiresAt });
+    otpStore.set(cleanEmail.toLowerCase(), { code: otpCode, expiresAt });
 
-    let emailSent = false;
     try {
-      await sendOtpEmail(email.trim(), otpCode);
-      emailSent = true;
+      await sendOtpEmail(cleanEmail, otpCode);
     } catch (mailErr) {
-      console.warn('⚠️ OTP email delivery warning:', mailErr.message);
+      console.error('❌ Failed to send OTP email:', mailErr);
+      return res.status(500).json({
+        message: mailErr.message || 'Failed to send OTP to your email address.',
+      });
     }
 
     return res.status(200).json({
-      message: emailSent
-        ? `OTP sent successfully to ${email}.`
-        : `OTP code generated for ${email}. (Email delivery offline, your OTP: ${otpCode})`,
-      otp: otpCode,
-      emailSent,
+      message: `OTP sent successfully to ${cleanEmail}. Please check your inbox (or spam folder).`,
     });
   } catch (error) {
     console.error('Send OTP error:', error);
-    return res.status(500).json({ message: 'Failed to send OTP email.' });
+    return res.status(500).json({ message: 'Server error processing OTP request.' });
   }
 };
 

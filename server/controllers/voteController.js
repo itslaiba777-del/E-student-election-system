@@ -207,21 +207,16 @@ const requestOTP = async (req, res) => {
 
     console.log(`🔑 [2FA VOTE OTP GENERATED] Voter: ${voter.email} | Election: ${electionIdNum} | Code: ${otpCode}`);
 
-    let emailSent = false;
     try {
       await sendOtpEmail(voter.email, otpCode);
-      emailSent = true;
     } catch (mailErr) {
-      console.warn('⚠️ OTP email delivery warning:', mailErr.message);
+      console.error('❌ Vote OTP email delivery error:', mailErr);
+      return res.status(500).json({ message: mailErr.message || 'Failed to send verification OTP to voter email.' });
     }
 
     return res.status(200).json({
-      message: emailSent
-        ? `Verification OTP sent to ${voter.email}.`
-        : `Verification OTP generated for ${voter.email} (Email service offline, your OTP: ${otpCode})`,
+      message: `Verification OTP sent to ${voter.email}. Please check your inbox (or spam folder).`,
       expires_in_seconds: 300,
-      otp: otpCode,
-      debug_otp: otpCode,
     });
   } catch (error) {
     console.error('Request vote OTP error:', error);
