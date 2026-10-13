@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { adminAPI, superadminAPI } from '../../../lib/api';
+import api, { adminAPI, superadminAPI } from '../../../lib/api';
 import ConfirmationModal from '../../../components/ConfirmationModal';
 import axios from 'axios';
 import {
@@ -138,12 +138,9 @@ export default function SuperAdminManageAdminsPage() {
 
     setProcessing(true);
     try {
-      const token = localStorage.getItem('token');
-      await axios.put(
-        `${API_BASE_URL}/superadmin/admins/${resetPasswordAdmin.id}/password`,
-        { new_password: newPasswordInput.trim() },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.put(`/superadmin/admins/${resetPasswordAdmin.id}/password`, {
+        new_password: newPasswordInput.trim(),
+      });
 
       setResetSuccessMsg(`Password successfully updated to "${newPasswordInput.trim()}" for ${resetPasswordAdmin.name || resetPasswordAdmin.full_name}!`);
       setTimeout(() => {
@@ -172,7 +169,6 @@ export default function SuperAdminManageAdminsPage() {
     setProcessing(true);
 
     try {
-      const token = localStorage.getItem('token');
       const firstName = formData.name.trim().split(' ')[0].toLowerCase();
       const defaultPass = formData.password.trim() || `${firstName}123`;
 
@@ -181,9 +177,7 @@ export default function SuperAdminManageAdminsPage() {
         password: defaultPass,
       };
 
-      const res = await axios.post(`${API_BASE_URL}/superadmin/admins`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await superadminAPI.createAdmin(payload);
 
       const created = res.data?.admin || {
         id: Date.now(),
